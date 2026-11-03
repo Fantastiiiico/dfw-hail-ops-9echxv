@@ -150,7 +150,7 @@ footer{font-size:11px;color:var(--mu);text-align:center;padding:10px}
 <div class='sheet' id='sh_layers' role='dialog' aria-label='Map layers'><div class='grab'></div><h3>Map layers<button class='ic' data-close type='button'>&times;</button></h3><label class='opt'><input type='checkbox' data-l='sw'><span>Hail areas<small>Where radar saw 1&quot;+ hail, colored by days left</small></span></label><label class='opt'><input type='checkbox' data-l='ar'><span>Knock areas<small>The numbered best areas</small></span></label><label class='opt'><input type='checkbox' data-l='radar'><span>Live rain radar<small>Last 2 hours, animated</small></span></label><label class='opt'><input type='checkbox' data-l='warn'><span>Storm warnings<small>Live weather service warnings and watches</small></span></label><label class='opt'><input type='checkbox' data-l='spc'><span>Today's storm risk<small>Chance of severe storms today</small></span></label><label class='opt'><input type='checkbox' data-l='mesh'><span>Hail size by day<small>Radar hail sizes, one storm day at a time</small></span></label><p class='sub'>Radar sizes are estimates, so they show as possible hail.</p></div>
 <div class='sheet info' id='sh_info' role='dialog' aria-label='About this map'><div class='grab'></div><h3>About this map<button class='ic' data-close type='button'>&times;</button></h3><p><b>Sales status:</b> knocking Garland/Rowlett for the 4/27/2026 storm. 175 days left in the 1-year window.</p><ul><li><b>Mon Apr 27, 2026 Garland/Rowlett</b>: knocking now.</li><li><b>Fri Sep 11, 2026 S Arlington</b> (#1 in the list)</li><li><b>Mon Sep 21, 2026 Keller</b>: not cleared for sales</li><li><b>Sun Sep 27, 2026 Willow Park</b>: not cleared for sales</li></ul><h4>What the labels mean</h4><p><b>&#10003; Confirmed hail</b>: at least two separate hail reports nearby.<br><b>Possible hail</b>: a radar estimate or a single report.</p><h4>Days left</h4><p>Counted 1 year from the storm date. Each policy sets its own deadline, and some are shorter. Knock lists only show storms from the last year. We don't file claims.</p><p class='fine'>This shows where hail fell, not roof damage. Distances are straight-line from Wylie.</p><details class='fine'><summary>Where the data comes from</summary><p>Government weather records (NOAA, National Weather Service), volunteer hail reports (CoCoRaHS), weather radar, RainViewer, Esri and OpenStreetMap maps, and free address lookups. Updated Nov 3, 6:37 AM CT.</p></details></div>
 <div class='sheet info' id='sh_hinfo' role='dialog' aria-label='What this means'><div class='grab'></div><h3>What this means<button class='ic' data-close type='button'>&times;</button></h3><p><b>&#10003; Confirmed</b> = at least two separate hail reports nearby.</p><p><b>Possible</b> = radar estimate or a single report.</p><p>This shows where hail fell, not roof damage. Sizes from radar are estimates.</p></div>
-<div class='sheet' id='sh_more' role='dialog' aria-label='More'><div class='grab'></div><h3>More<button class='ic' data-close type='button'>&times;</button></h3><button class='btn' type='button' data-more='sum'>&#128203; Daily Summary</button><button class='btn' type='button' data-more='lists'>&#9776; Lists</button><button class='btn' type='button' data-more='pitch'>&#128208; Pitch gauge</button><button class='btn' type='button' data-more='set'>&#9881; Settings</button></div>
+<div class='sheet' id='sh_more' role='dialog' aria-label='More'><div class='grab'></div><h3>More<button class='ic' data-close type='button'>&times;</button></h3><button class='btn' type='button' data-more='terr'>&#128205; Territory</button><button class='btn' type='button' data-more='sum'>&#128203; Daily Summary</button><button class='btn' type='button' data-more='lists'>&#9776; Lists</button><button class='btn' type='button' data-more='pitch'>&#128208; Pitch gauge</button><button class='btn' type='button' data-more='set'>&#9881; Settings</button></div>
 <nav class='bnav'><button type='button' data-go='map' class='on'><span>&#128506;</span>Map</button><button type='button' data-go='wx' id='nav_wx'><span>&#9928;</span>Weather</button><button type='button' data-go='scan' id='nav_scan'><span>&#128247;</span>Roof Scan</button><button type='button' data-go='canv' id='nav_canv'><span>&#128682;</span>Canvass</button><button type='button' data-sh='sh_more' id='nav_more'><span>&#8943;</span>More</button><button type='button' data-go='lists' id='nav_lists' hidden><span>&#9776;</span>Lists</button><button type='button' data-go='pitch' id='nav_pitch' hidden><span>&#128208;</span>Pitch</button><button type='button' data-sh='sh_set' id='nav_set' hidden><span>&#9881;</span>Settings</button></nav>
 <script>/* ---------- Address search + "use my location" (added 2026-10-01) ----------
    Shared by the phone canvass map (/) and the dashboard (/dashboard/); inlined at build time.
@@ -1232,7 +1232,9 @@ function showRes(lat,lon,label,list,lay){if(!M){PENDL=[lat,lon,label,list,lay];r
   abort();render([]);say('Searching…');var my=seq;AC=new AbortController();
   AddrSearch.searchAll(q,AC.signal).then(function(r){if(my!=seq)return;say('');if(!r.length){say('No Texas match. Try a city, ZIP, street, or part of an address.',1);return}
    var hn=(q.match(/^\s*(\d+)\s/)||[])[1];if(hn&&!(r[0].prec=='house'&&(r[0].num?r[0].num==hn:r[0].label.indexOf(hn+' ')>=0))){say('House '+hn+' not found. Pick the street below for a street-level check.',1);inp.focus();render(r);return}
-   if(r.length==1||r[0].prec=='house')done(r[0]);else{inp.focus();render(r)}}).catch(function(){if(my==seq)say('Lookup service not answering. Try again in a moment.',1)})}
+   var qn=q.toLowerCase().replace(/\s+/g,' ').trim(), top=r[0].label.toLowerCase();
+   var clearPlace=(r[0].prec=='area'||r[0].prec=='place')&&(top===qn||top.indexOf(qn+',')===0||top.indexOf(qn+' tx')===0);
+   if(r.length==1||r[0].prec=='house'||clearPlace)done(r[0]);else{inp.focus();render(r)}}).catch(function(){if(my==seq)say('Lookup service not answering. Try again in a moment.',1)})}
  $('as_form').addEventListener('submit',function(e){e.preventDefault();submit()});
  $('as_loc').onclick=function(){if(!navigator.geolocation){say('Location not available.',1);return}say('Getting your location…');
   navigator.geolocation.getCurrentPosition(function(p){say('');lookup(p.coords.latitude,p.coords.longitude,'My location','gps')},function(){say('Could not get your location.',1)},{enableHighAccuracy:true,timeout:15000,maximumAge:60000})};
@@ -1292,9 +1294,9 @@ setInterval(function(){if(document.hidden||!M)return;if(ON.radar)radarLoad();if(
 setInterval(radarTick,600);
 // ---------- bottom nav ----------
 // 2026-11-02: full-screen views (Weather, Roof Scan, Canvass, Daily Summary) close each other; More sheet reaches Lists/Pitch/Settings/Summary
-var VIEWS={wx:'WXV',scan:'RSV',canv:'CVV',sum:'DSV'};
+var VIEWS={wx:'WXV',scan:'RSV',canv:'CVV',sum:'DSV',terr:'TRV'};
 function closeViews(keep){for(var k in VIEWS)if(k!=keep&&window[VIEWS[k]])window[VIEWS[k]].close()}
-window.FVmark=function(g){document.querySelectorAll('.bnav button').forEach(function(x){x.classList.toggle('on',x.dataset.go==g||(g=='sum'&&x.id=='nav_more'))})};
+window.FVmark=function(g){document.querySelectorAll('.bnav button').forEach(function(x){x.classList.toggle('on',x.dataset.go==g||((g=='sum'||g=='terr')&&x.id=='nav_more'))})};
 window.FVnav=function(g){var b=document.querySelector('.bnav button[data-go="'+g+'"]');if(b)b.click()};
 document.querySelectorAll('.bnav button').forEach(function(b){b.onclick=function(){
  var g=b.dataset.go;closeViews(g);if(openSh)sheet(openSh,false);document.querySelectorAll('.bnav button').forEach(function(x){x.classList.toggle('on',x===b)});if(b.dataset.sh){if(b.id=='nav_set')FVmark('');sheet(b.dataset.sh,true);return}
@@ -1305,7 +1307,7 @@ document.querySelectorAll('.bnav button').forEach(function(b){b.onclick=function
  if(g=='lists'){FVmark('map');$('topgrp').open=true;$('lists').scrollIntoView({behavior:'smooth'})}
  if(g=='pitch'){var p=$('pg-btn');if(p)p.click();FVmark('map')}}});
 document.querySelectorAll('[data-more]').forEach(function(b){b.onclick=function(){var m=b.dataset.more;sheet('sh_more',false);
- if(m=='sum'){closeViews('sum');DSV.open()}else if(m=='lists')$('nav_lists').click();else if(m=='pitch')$('nav_pitch').click();else if(m=='set')$('nav_set').click()}});
+ if(m=='sum'){closeViews('sum');DSV.open()}else if(m=='terr'){closeViews('terr');if(window.TRV)TRV.open()}else if(m=='lists')$('nav_lists').click();else if(m=='pitch')$('nav_pitch').click();else if(m=='set')$('nav_set').click()}});
 // ---------- status chips: live in the browser ----------
 // 2026-10-07h: knocking chip is a picker (any active area in the 365-day window, or search an area); choice saved on device
 function mkSheet(id,title){var d=document.createElement('div');d.className='sheet';d.id=id;d.setAttribute('role','dialog');d.innerHTML='<div class="grab"></div><h3>'+title+'<button class="ic" type="button" data-x>&times;</button></h3><div class="bd"></div>';document.body.appendChild(d);d.querySelector('[data-x]').onclick=function(){sheet(id,false)};return d}
@@ -1416,5 +1418,6 @@ if(window.L)initMap();
 })();
 </script>
 
+<script src='territory.js'></script>
 <script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' crossorigin='' onload='initMap()' async></script>
 </body></html>
