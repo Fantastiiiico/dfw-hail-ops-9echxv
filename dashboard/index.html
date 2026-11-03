@@ -45,7 +45,7 @@ body.hasbanner .leaflet-top{top:34px}
 <div class="small">Varro Restoration, Wylie TX. Public NOAA/NWS/CoCoRaHS/OSM data only. History built <span id="built"></span>. Times are Central.</div>
 <h3>Find an address</h3>
 <div id="findbox">
-<form class="as-form" id="as_form" role="search" action="#"><input id="q" type="search" inputmode="search" enterkeyhint="search" autocomplete="street-address" placeholder="300 Country Club Rd, Wylie (or lat,lon)" aria-label="Street address">
+<form class="as-form" id="as_form" role="search" action="#"><input id="q" type="search" inputmode="search" enterkeyhint="search" autocomplete="street-address" placeholder="Street, city, ZIP, or address" aria-label="Street, city, ZIP, or address">
 <button class="as-btn" id="go" type="submit">Search</button><button class="as-btn loc" id="as_loc" type="button">&#128205; Use my location</button></form>
 <div class="as-msg" id="as_msg"></div><div class="as-list" id="as_list"></div>
 <div class="small" style="margin-top:4px">Or click/tap anywhere on the map. Report window: <select id="yrs"><option value="0">all years</option><option value="1">1 yr</option><option value="2" selected>2 yrs</option><option value="3">3 yrs</option><option value="5">5 yrs</option><option value="10">10 yrs</option></select></div>
@@ -513,14 +513,20 @@ var WX = (function () {
    2026-10-07i: phone map suggestions + Enter now use the Esri World Geocoder first (rooftop PointAddress, forStorage=false, not stored),
    then Photon / Census / Nominatim as fallbacks; pins snap to the nearest FEMA/ORNL USA Structures footprint (<=35 m).
    Geocoder: OpenStreetMap Nominatim, free, no key. Usage-policy compliance:
-   - search runs only when the user presses Search/Enter (no type-ahead: Nominatim forbids client-side autocomplete);
-   - at most 1 request per 1.1 s for the whole page (serialized queue) + in-memory cache of repeat searches;
+   - Nominatim runs only on Search/Enter (no Nominatim type-ahead). Suggestions use Esri and Photon.
+   - at most 1 request per 1.1 s for Nominatim (serialized queue) + in-memory cache of repeat searches;
    - the browser identifies the site with its Referer header (browsers do not allow pages to set User-Agent);
-   - results limited to the DFW / 110-mi-Wylie box (bounded viewbox) and then to Texas only.
+   - results limited to Texas (the old 110-mi Wylie box was too tight) and biased toward Wylie so DFW still ranks first.
    Swath check: point-in-polygon against the MRMS MESH swath polygons already published with the dashboard. */
 var AddrSearch = (function () {
   var NOMI = 'https://nominatim.openstreetmap.org/search';
-  var VIEWBOX = '-98.6,34.7,-94.5,31.3';           // lon/lat box around the 110-mi Wylie radius
+  // 2026-11-03: the previous box (-98.6,34.7,-94.5,31.3) was the 110-mi Wylie radius.
+  // Nominatim used it with bounded=1, Photon as bbox, and Esri as searchExtent, so Houston
+  // and Austin never resolved (a search for Houston returned Houston St in Lavon).
+  // The Leaflet map has no maxBounds; panning was not locked. This box is the state of Texas.
+  var VIEWBOX = '-106.8,36.6,-93.4,25.7';          // Nominatim viewbox: left,top,right,bottom
+  var TXEXT = '-106.8,25.7,-93.4,36.6';            // Photon bbox / Esri searchExtent: xmin,ymin,xmax,ymax
+  var BIAS_LAT = 33.015, BIAS_LON = -96.539;       // Wylie — nearby streets still rank first
   var GAP = 1100, lastReq = 0, chain = Promise.resolve(), cache = {};
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function throttled(url) {                         // serialize + space requests >= GAP ms apart
@@ -573,13 +579,13 @@ var AddrSearch = (function () {
     function run() {
       var q = o.input.value.trim();
       o.list.innerHTML = '';
-      if (q.length < 3) { say('Type a street address, e.g. 300 Country Club Rd, Wylie'); return; }
+      if (q.length < 3) { say('Type a street, city, ZIP, or part of an address'); return; }
       var m = q.match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
       if (m) { pick({ lat: +m[1], lon: +m[2], label: q, prec: 'place' }); return; }
-      busy(true); say('Looking up the address (OpenStreetMap)...');
-      geocode(q).then(function (res) {
+      busy(true); say('Looking up that place in Texas...');
+      searchAll(q).then(function (res) {
         busy(false);
-        if (!res.length) { say('No Texas match in the DFW area. Try "number street, city" (e.g. 300 Country Club Rd, Wylie), or tap Use my location.', 'warn'); return; }
+        if (!res.length) { say('No Texas match. Try a city, a ZIP, a street, or part of an address, or tap Use my location.', 'warn'); return; }
         if (res.length === 1) { pick(res[0]); return; }
         say(res.length + ' matches. Tap the right one:');
         res.forEach(function (r) {
@@ -592,7 +598,34 @@ var AddrSearch = (function () {
         say('Address lookup is not answering (no signal or the free lookup service is busy). Wait a few seconds and try again, or tap Use my location.', 'warn');
       });
     }
-    o.form.addEventListener('submit', function (e) { e.preventDefault(); o.input.blur(); run(); });
+    var sugT = null, sugN = 0;
+    o.input.addEventListener('input', function () {
+      var q = o.input.value.trim();
+      clearTimeout(sugT);
+      var my = ++sugN;
+      if (q.length < 3) { o.list.innerHTML = ''; return; }
+      sugT = setTimeout(function () {
+        esriSuggest(q).catch(function () { return suggest(q); }).then(function (r) {
+          if (my !== sugN) return;
+          o.list.innerHTML = '';
+          (r || []).slice(0, 8).forEach(function (x) {
+            var b = document.createElement('button'); b.type = 'button'; b.className = 'as-item';
+            b.innerHTML = '<b>' + esc(x.label) + '</b><span>' + esc(x.full || '') + '</span>';
+            b.onclick = function () {
+              o.list.innerHTML = ''; sugN++;
+              if (x.lat != null) { pick(x); return; }
+              say('Finding that place...');
+              esriFind(x.label, x.magicKey).then(function (hits) {
+                var h = hits && hits[0];
+                if (h) pick(h); else { o.input.value = x.label; run(); }
+              }).catch(function () { o.input.value = x.label; run(); });
+            };
+            o.list.appendChild(b);
+          });
+        }).catch(function () {});
+      }, 280);
+    });
+    o.form.addEventListener('submit', function (e) { e.preventDefault(); o.input.blur(); sugN++; run(); });
     o.loc.addEventListener('click', function () {
       if (!navigator.geolocation) { say('This browser cannot share location.', 'warn'); return; }
       o.loc.disabled = true; say('Getting your location (allow it if the phone asks)...');
@@ -663,7 +696,7 @@ var AddrSearch = (function () {
     '.as-dol{background:#F5F0E6;border-radius:10px;padding:10px 12px;margin:8px 0;color:#0A2748}.as-dol-k{font-size:13px;font-weight:700;color:#0A2748;text-transform:uppercase;letter-spacing:.02em}.as-dol-d{font-size:22px;font-weight:800;margin:2px 0}.as-hd{margin:4px 0}.as-hd li{font-size:14px}';
 
   // ---------- 2026-10-07b: as-you-type suggestions (Photon by Komoot, free, no key) + Census fallback ----------
-  // Photon allows type-ahead; we still debounce (350 ms), cancel stale requests, cache, and bias to Wylie / the DFW box.
+  // Photon allows type-ahead; we still debounce (350 ms), cancel stale requests, cache, and bias to Wylie inside the Texas box.
   // When the typed house number is not in OpenStreetMap, the US Census geocoder (JSONP, free, no key) is tried on Enter.
   var PHOTON = 'https://photon.komoot.io/api/', scache = {};
   function photonLabel(p) {
@@ -674,18 +707,22 @@ var AddrSearch = (function () {
   function suggest(q) {
     var k = q.toLowerCase().replace(/\s+/g, ' ').trim();
     if (scache[k]) return Promise.resolve(scache[k]);
-    var url = PHOTON + '?limit=8&lang=en&lat=33.0&lon=-96.6&bbox=-98.6,31.3,-94.5,34.7&q=' + encodeURIComponent(q);
+    var url = PHOTON + '?limit=8&lang=en&lat=' + BIAS_LAT + '&lon=' + BIAS_LON + '&bbox=' + TXEXT + '&q=' + encodeURIComponent(q);
     return fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); }).then(function (j) {
       var seen = {}, out = (j.features || []).filter(function (f) {
         var p = f.properties || {}; if (!(p.state === 'Texas' || p.state === 'TX')) return false;
-        // 2026-10-07j: street addresses only — house/street/place=house; drop amenity/shop/office/tourism/etc.
+        // Houses, streets, cities, ZIPs, and neighborhoods. Still drop businesses (amenity/shop/office/tourism).
+        if (p.osm_key === 'amenity' || p.osm_key === 'shop' || p.osm_key === 'tourism' || p.osm_key === 'office' || p.osm_key === 'craft') return false;
         if (p.housenumber) return true;
-        if (p.osm_key === 'highway' || p.type === 'street' || p.osm_value === 'house' || p.osm_key === 'place' && p.type === 'house') return true;
+        if (p.osm_key === 'highway' || p.type === 'street' || p.osm_value === 'house') return true;
+        if (p.osm_key === 'place' || p.type === 'postcode' || p.osm_value === 'postcode') return true;
         return false;
       }).map(function (f) {
         var p = f.properties, c = f.geometry.coordinates;
-        return { lat: c[1], lon: c[0], label: photonLabel(p), full: [p.city, p.county, p.postcode].filter(Boolean).join(', '),
-          prec: p.housenumber ? 'house' : 'street' };
+        var prec = p.housenumber ? 'house' : (p.osm_key === 'highway' || p.type === 'street') ? 'street' : (p.type === 'postcode' || p.osm_value === 'postcode') ? 'area' : 'place';
+        var kind = prec === 'house' ? 'Address' : prec === 'street' ? 'Street' : prec === 'area' ? 'ZIP' : 'Place';
+        return { lat: c[1], lon: c[0], label: photonLabel(p), full: kind + (p.county ? ' · ' + p.county : ''),
+          prec: prec };
       }).filter(function (r) { if (seen[r.label]) return false; seen[r.label] = 1; return true; });
       scache[k] = out; return out;
     });
@@ -707,7 +744,7 @@ var AddrSearch = (function () {
 
   // ---------- 2026-10-07i: Esri World Geocoder (rooftop/parcel PointAddress; free non-stored use, forStorage=false) ----------
   // + building snap against FEMA/ORNL USA Structures footprints (Esri Living Atlas feature service, CORS, no key).
-  var EG = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/', EXT = '-98.6,31.3,-94.5,34.7', ecache = {};
+  var EG = 'https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/', EXT = TXEXT, ecache = {};
   var STRUCT = 'https://services2.arcgis.com/FiaPA4ga0iQKduv3/ArcGIS/rest/services/USA_Structures_View/FeatureServer/0/query';
   function jget(url, signal, ms) {
     var ac = new AbortController(), t = setTimeout(function () { ac.abort(); }, ms || 6000);
@@ -717,21 +754,22 @@ var AddrSearch = (function () {
   }
   function esriSuggest(q, signal) {
     var k = 's|' + q.toLowerCase().replace(/\s+/g, ' ').trim(); if (ecache[k]) return Promise.resolve(ecache[k]);
-    return jget(EG + 'suggest?f=json&category=Address&countryCode=USA&maxSuggestions=7&location=-96.6,33.0&searchExtent=' + EXT + '&text=' + encodeURIComponent(q), signal, 4000).then(function (j) {
+    var cat = 'Address,Street Address,Street Name,Subaddress,Populated Place,Postal';
+    return jget(EG + 'suggest?f=json&category=' + encodeURIComponent(cat) + '&countryCode=USA&maxSuggestions=8&location=' + BIAS_LON + ',' + BIAS_LAT + '&searchExtent=' + EXT + '&text=' + encodeURIComponent(q), signal, 4000).then(function (j) {
       var out = (j.suggestions || []).filter(function (x) {
-        if (x.isCollection) return false;   // 2026-10-07j: street addresses only (no POI / business / category)
-        return / TX, | TX$|Texas/.test(x.text);
+        return /,\s*TX\b|\bTexas\b/.test(x.text);
       }).map(function (x) {
-        var t = x.text.replace(/, USA$/, '').replace(/, TX, (\d{5})$/, ', TX $1');
-        return { label: t, full: /^\d+\s/.test(t) ? 'Address' : 'Street', magicKey: x.magicKey, prec: /^\d+\s/.test(t) ? 'house' : 'street' };
+        var t = x.text.replace(/, USA$/, '').replace(/, TX, (\d{5})$/, ', TX $1').replace(/, Texas, (\d{5})$/, ', TX $1').replace(/, Texas$/, ', TX');
+        var kind = x.isCollection ? 'Several matches' : (/^\d{5}\b/.test(t) ? 'ZIP' : (/^\d+\s/.test(t) ? 'Address' : 'Place or street'));
+        return { label: t, full: kind, magicKey: x.magicKey, prec: /^\d+\s/.test(t) ? 'house' : (/^\d{5}\b/.test(t) ? 'area' : 'place'), collection: !!x.isCollection };
       }); ecache[k] = out; return out; });
   }
   function ptype(a) { return a === 'PointAddress' || a === 'Subaddress' ? 'house' : a === 'StreetAddress' || a === 'StreetAddressExt' ? 'interp' : a === 'StreetName' || a === 'StreetInt' ? 'street' : a === 'POI' ? 'place' : 'area'; }
   function esriFind(q, magicKey, signal) {
     var k = 'f|' + q.toLowerCase().replace(/\s+/g, ' ').trim() + '|' + (magicKey || ''); if (ecache[k]) return Promise.resolve(ecache[k]);
-    return jget(EG + 'findAddressCandidates?f=json&forStorage=false&countryCode=USA&maxLocations=6&locationType=rooftop&outFields=Addr_type,AddNum,Region&location=-96.6,33.0&searchExtent=' + EXT +
+    return jget(EG + 'findAddressCandidates?f=json&forStorage=false&countryCode=USA&maxLocations=6&locationType=rooftop&outFields=Addr_type,AddNum,Region,City,Postal&location=' + BIAS_LON + ',' + BIAS_LAT + '&searchExtent=' + EXT +
       '&SingleLine=' + encodeURIComponent(q) + (magicKey ? '&magicKey=' + encodeURIComponent(magicKey) : ''), signal, 7000).then(function (j) {
-      var out = (j.candidates || []).filter(function (c) { var t = c.attributes.Addr_type; if (t === 'POI' || t === 'Locality' || t === 'PostalLoc') return false; return c.score >= 80 && (!c.attributes.Region || c.attributes.Region === 'Texas'); }).map(function (c) {   // 2026-10-07j: no businesses
+      var out = (j.candidates || []).filter(function (c) { var t = c.attributes.Addr_type; if (t === 'POI') return false; return c.score >= 70 && (!c.attributes.Region || c.attributes.Region === 'Texas'); }).map(function (c) {   // businesses stay out; cities, ZIPs, and streets stay in
         var pr = ptype(c.attributes.Addr_type);
         return { lat: c.location.y, lon: c.location.x, label: c.address.replace(/, Texas, (\d{5})$/, ', TX $1').replace(/, Texas$/, ', TX'), full: 'Esri ' + c.attributes.Addr_type,
           prec: pr === 'interp' ? 'house' : pr, interp: pr === 'interp', num: String(c.attributes.AddNum || ''), score: c.score };
@@ -749,11 +787,28 @@ var AddrSearch = (function () {
           if (!best || d < best.d) best = { lat: cy, lon: cx, g: f.geometry, d: d }; });
         return best; }).catch(function () { return null; });
   }
-  // full search on Enter: Photon -> (house number typed but not matched) Census -> Nominatim
-  // 2026-10-07i: full search on Enter = the exact typed text. Esri rooftop first (house number must match), then Photon -> Census -> Nominatim.
+  // ZIP codes: Zippopotam (same free source the Weather tab uses) so a 5-digit ZIP does not depend on a street match.
+  function zipPlace(q) {
+    var m = String(q).match(/^\s*(\d{5})(?:-\d{4})?\s*$/);
+    if (!m) return Promise.resolve([]);
+    return fetch('https://api.zippopotam.us/us/' + m[1]).then(function (r) {
+      if (r.status === 404) return [];
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (j) {
+      var places = (j && j.places) || [];
+      var tx = places.filter(function (p) { return p['state abbreviation'] === 'TX'; });
+      return (tx.length ? tx : places).slice(0, 5).map(function (p) {
+        return { lat: +p.latitude, lon: +p.longitude, label: p['place name'] + ', ' + p['state abbreviation'] + ' ' + m[1], full: 'ZIP code', prec: 'area', score: 100 };
+      });
+    }).catch(function () { return []; });
+  }
+  // full search on Enter: ZIP -> Esri (house, street, city, or ZIP) -> Photon -> Census -> Nominatim.
+  // A leading house number still prefers an exact house, then offers the street. A city or ZIP is a valid result.
   function searchAll(q, signal) {
-    var hn = (q.match(/^\s*(\d+)\s/) || [])[1];
+    var hn = (q.match(/^\s*(\d+)\s+\S/) || [])[1];
     function hnOk(x) { return x.prec === 'house' && (x.num ? x.num === hn : x.label.indexOf(hn + ' ') === 0); }
+    return zipPlace(q).then(function (z) { if (z.length) return z;
     return esriFind(q, null, signal).catch(function () { return []; }).then(function (er) {
       if (hn) { var ex = er.filter(hnOk); ex.sort(function (a, b) { return Math.abs(a.score - b.score) > 0.5 ? b.score - a.score : a.interp - b.interp; }); if (ex.length) return ex; }   // best score first (exact street name beats a rooftop point on a different street)
       else if (er.length) return er;
@@ -769,7 +824,7 @@ var AddrSearch = (function () {
           });
         });
       });
-    });
+    }); });
   }
   // ---------- 2026-10-07d per-house hail history (one row per storm day, newest first) ----------
   // at = max hail AT the point: MESH band containing it, or a ground report within 0.5 mi. m1/m3/m10 = max size (MESH band
@@ -914,7 +969,7 @@ function rurl(i){const x=R.x[i];return x<0?'https://www.ncdc.noaa.gov/stormevent
 document.getElementById('built').textContent=D.meta.built;
 
 // ---------- map ----------
-const map=L.map('map',{preferCanvas:true}).setView([32.95,-96.9],9);
+const map=L.map('map',{preferCanvas:true,minZoom:4}).setView([32.95,-96.9],9); // no maxBounds: pan anywhere in Texas
 map.createPane('meshPane').style.zIndex=350;map.createPane('warnPane').style.zIndex=360;map.createPane('sigPane').style.zIndex=380;
 const meshR=L.canvas({pane:'meshPane'}),warnR=L.canvas({pane:'warnPane'}),sigR=L.canvas({pane:'sigPane'});
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors (map, neighborhoods) | NOAA SPC, NCEI, MRMS, NWS, CoCoRaHS'}).addTo(map);
@@ -1047,7 +1102,7 @@ function pickSpot(la,lo,label){map.flyTo([la,lo],14,{duration:0.8});pointReport(
 AddrSearch.attach({form:document.getElementById('as_form'),input:document.getElementById('q'),go:document.getElementById('go'),loc:document.getElementById('as_loc'),
  list:document.getElementById('as_list'),msg:document.getElementById('as_msg'),onPick:(la,lo,label)=>pickSpot(la,lo,label)});
 const c=D.meta.counts;
-document.getElementById('about').innerHTML=`<b>Confidence</b> (same rule as the address DOL lookup): FACT = 2 or more distinct ground hail reports within 3 mi (copies of one report in several feeds merged: &le;0.35 mi and &le;20 min, or &le;0.2 mi within 3 h), or ground reports from 2 or more independent datasets (preliminary LSR/SPC, official NCEI/SPC Storm Data, CoCoRaHS). POSSIBLE_HAIL (not confirmed) = a single ground report, even with radar/MESH/warning agreeing, or radar/warnings only. Score 0-100 (see README).<br><b>Data</b>: `+Object.entries(c).map(([k,v])=>`${SRCL[k]||k}: ${v[0].toLocaleString()} (${v[1]} to ${v[2]})`).join('; ')+`.<br>Storm day = 7 AM to 7 AM CT. MESH = MRMS radar estimate (from Oct 2020). Warning polygons: api.weather.gov (7-day window, accumulated since 2026-09-20); IEM archive blocked from our server. Address search: OpenStreetMap Nominatim from your browser (on Search only, max 1 request/sec, DFW box, Texas results only); the Census geocoder has no browser CORS support. The swath line is a point-in-polygon check against the MESH swath polygons in the report window.`;
+document.getElementById('about').innerHTML=`<b>Confidence</b> (same rule as the address DOL lookup): FACT = 2 or more distinct ground hail reports within 3 mi (copies of one report in several feeds merged: &le;0.35 mi and &le;20 min, or &le;0.2 mi within 3 h), or ground reports from 2 or more independent datasets (preliminary LSR/SPC, official NCEI/SPC Storm Data, CoCoRaHS). POSSIBLE_HAIL (not confirmed) = a single ground report, even with radar/MESH/warning agreeing, or radar/warnings only. Score 0-100 (see README).<br><b>Data</b>: `+Object.entries(c).map(([k,v])=>`${SRCL[k]||k}: ${v[0].toLocaleString()} (${v[1]} to ${v[2]})`).join('; ')+`.<br>Storm day = 7 AM to 7 AM CT. MESH = MRMS radar estimate (from Oct 2020). Warning polygons: api.weather.gov (7-day window, accumulated since 2026-09-20); IEM archive blocked from our server. Address search: Esri World Geocoder suggestions as you type (street, city, ZIP, or partial address), then Photon, the Census geocoder, and OpenStreetMap Nominatim. Results stay in Texas, biased toward Wylie. The old 110-mile Wylie box is gone. The map has no maxBounds. The swath line is a point-in-polygon check against the MESH swath polygons in the report window.`;
 // ======================= LIVE LAYERS (fetched by the browser itself; works from file://) =======================
 // Sources: NOAA MRMS radar via NCEP opengeo WMS (fallback: NWS mapservices ImageServer), NWS alerts + LSR text
 // products via api.weather.gov. All send CORS headers, so no server of ours is needed. Situational awareness only:
