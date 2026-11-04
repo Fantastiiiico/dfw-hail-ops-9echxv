@@ -610,7 +610,7 @@ var CSS='#wxv{position:fixed;inset:0;z-index:1500;background:var(--bg);overflow-
 var st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
 var v=document.createElement('div');v.id='wxv';v.setAttribute('role','dialog');v.setAttribute('aria-label','Weather');
 v.innerHTML='<div class="wh"><div class="wt"><b>&#9928; Weather</b><button class="ic" type="button" id="wxv_x" aria-label="Close">&times;</button></div>'+
-'<form id="wxv_f"><input id="wxv_q" type="search" inputmode="search" placeholder="City or ZIP (e.g. Plano or 75098)" autocomplete="off"><button class="go" type="submit">Search</button></form></div><div class="bd" id="wxv_b"></div>';
+'<form id="wxv_f"><input id="wxv_q" type="search" inputmode="search" placeholder="City or ZIP (e.g. Plano or 75098)" autocomplete="off"><button class="go" type="submit">Search</button></form></div><div class="bd" id="wxv_b"></div><div id="wxv_hm"></div>';
 document.body.appendChild(v);
 var DEF={lat:33.0151,lon:-96.5389,name:'Wylie, TX 75098'},KEY='wxv_place',cur=null;
 try{cur=JSON.parse(localStorage.getItem(KEY))}catch(e){}if(!cur||cur.lat==null)cur=DEF;
@@ -633,6 +633,7 @@ function err(m){B.innerHTML='<div class="err">&#9888; '+esc(m)+'</div>'}
 function n(x){return x==null||isNaN(x)?'n/a':Math.round(x)}
 function load(p){cur=p;try{localStorage.setItem(KEY,JSON.stringify(p))}catch(e){}
  B.innerHTML='<div class="cd mu">Loading weather for '+esc(p.name)+'&hellip;</div>';
+ if(window.HailOutlook)HailOutlook.read(p.lat,p.lon,p.name);
  var u='https://api.open-meteo.com/v1/forecast?latitude='+p.lat+'&longitude='+p.lon+
   '&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation'+
   '&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m,wind_gusts_10m'+
@@ -1431,5 +1432,6 @@ if(window.L)initMap();
 
 <script src='territory.js'></script>
 <script src='hail-meter.js'></script>
+<script src='hail-outlook.js'></script>
 <script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' crossorigin='' onload='initMap()' async></script>
 </body></html>
