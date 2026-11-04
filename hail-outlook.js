@@ -74,17 +74,14 @@
 
   var CSS = '#wxv_hm{padding:0 12px 8px}#wxv_hm .cd{background:#fff;border:1px solid var(--ln,#e5e7eb);border-radius:14px;padding:14px;margin:0 0 12px;color:#0A2748}' +
     '#wxv_hm h4{margin:0 0 4px;font-size:16px}#wxv_hm .mu{color:#64748b;font-size:13px;line-height:1.4}' +
-    '#ol_rate{font-size:22px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;margin:6px 0}' +
-    '#ol_rate.up{color:#0A2748}#ol_rate.mid{color:#8a6a1a}#ol_rate.low{color:#64748b}#ol_rate.na{color:#94a3b8}' +
-    '#ol_bar{display:flex;gap:6px;margin:8px 0 4px}#ol_bar span{flex:1;text-align:center;font-size:12px;font-weight:700;padding:6px 0;border-radius:8px;background:#f1f5f9;color:#64748b}' +
-    '#ol_bar span.on{background:#0A2748;color:#F4EFE4}#ol_bar.mid span.on{background:#B78A2A;color:#0A2748}' +
+    '#ol_rate{font-size:16px;font-weight:700;margin:8px 0 2px}' +
     '#ol_days{margin:8px 0 0}#ol_days div{padding:8px 0;border-top:1px solid #f1f5f9;font-size:14px}#ol_days b{display:block}' +
     '#wxv_hm ul{margin:6px 0 0;padding-left:18px;font-size:13px;color:#334155}#wxv_hm li{margin:4px 0}';
   var st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   var host = document.getElementById('wxv_hm');
   if (!host) return;
   host.innerHTML = '<div class="cd"><h4>Hail outlook</h4><div id="ol_where" class="mu">Same place as this forecast.</div>' +
-    '<div id="ol_rate" class="na"></div><div id="ol_bar"></div><div id="ol_days"></div><p class="mu" id="ol_note"></p></div>' +
+    '<div id="ol_rate"></div><div id="ol_days"></div><p class="mu" id="ol_note"></p></div>' +
     '<div class="cd"><h4>How this outlook is set</h4><ul>' +
     '<li><b>Elevated</b> — SPC hail probability 15% or higher on day 1 or 2, or an Open-Meteo day coded 96 or 99 (thunderstorm with hail).</li>' +
     '<li><b>Limited</b> — SPC hail area of 5% and under 15%, or an Open-Meteo day coded 95 (thunderstorm, hail not in the code).</li>' +
@@ -103,13 +100,7 @@
     }, function (e) { clearTimeout(t); throw e; });
   }
   function paint(lv) {
-    var bar = $('ol_bar');
-    bar.className = lv.key === 'mid' ? 'mid' : '';
-    var names = ['Lower', 'Limited', 'Elevated'];
-    var on = lv.key === 'low' ? 'Lower' : lv.key === 'mid' ? 'Limited' : lv.key === 'up' ? 'Elevated' : '';
-    bar.innerHTML = names.map(function (n) { return '<span' + (n === on ? ' class="on"' : '') + '>' + n + '</span>'; }).join('');
-    $('ol_rate').className = lv.key;
-    $('ol_rate').textContent = lv.name;
+    $('ol_rate').textContent = lv.key === 'na' ? 'Outlook: data unavailable.' : ('Outlook: ' + lv.name + '.');
   }
   function dayBlock(title, spc) {
     if (!spc || !spc.ok) return '<div><b>' + esc(title) + '</b>SPC hail outlook: data unavailable.</div>';
@@ -121,9 +112,7 @@
   function read(lat, lon, label) {
     var my = ++seq;
     $('ol_where').textContent = label || 'This place';
-    $('ol_rate').className = 'na';
-    $('ol_rate').textContent = '…';
-    $('ol_bar').innerHTML = '';
+    $('ol_rate').textContent = 'Checking…';
     $('ol_days').innerHTML = '';
     $('ol_note').textContent = 'Checking the SPC hail outlook and the Open-Meteo forecast codes…';
     var spcUrls = [
