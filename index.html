@@ -50,6 +50,10 @@ button{font:inherit;color:inherit}a{color:var(--ac)}
 .tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;border-radius:6px;padding:3px 7px;background:#f1f5f9;color:#334155;white-space:nowrap}
 .tag.fact{background:#0f172a;color:#fff}.tag.poss{background:#fff;color:#334155;border:1px dashed #94a3b8}.tag.y2{background:#fff7ed;color:#9a3412}
 .btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:46px;border:0;border-radius:12px;background:var(--ac);color:#fff;font-weight:700;font-size:15px;text-decoration:none;cursor:pointer;margin-top:10px}
+#sh_more .moregrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+#sh_more .mtile{display:flex;flex-direction:row;align-items:center;gap:10px;min-height:72px;margin:0;padding:12px;border:0;border-radius:14px;background:#0A2748;color:#F4EFE4;font-weight:700;font-size:15px;line-height:1.2;text-align:left;cursor:pointer}
+#sh_more .mtile svg{width:26px;height:26px;flex:0 0 26px;display:block}
+#sh_more .mtile.set{background:#F4EFE4;color:#0A2748;box-shadow:inset 0 0 0 1px #e7d7b0}
 .btn.s{background:#eef2ff;color:var(--ac)}
 .sect{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mu);margin:18px 4px 6px}
 details.grp{background:var(--card);border-radius:var(--r);margin:10px 0;box-shadow:0 1px 3px rgba(0,0,0,.08)}
@@ -149,7 +153,7 @@ footer{font-size:11px;color:var(--mu);text-align:center;padding:10px}
 <div class='sheet' id='sh_layers' role='dialog' aria-label='Map layers'><div class='grab'></div><h3>Map layers<button class='ic' data-close type='button'>&times;</button></h3><label class='opt'><input type='checkbox' data-l='sw'><span>Hail areas<small>Where radar saw 1&quot;+ hail, colored by days left</small></span></label><label class='opt'><input type='checkbox' data-l='ar'><span>Knock areas<small>The numbered best areas</small></span></label><label class='opt'><input type='checkbox' data-l='radar'><span>Live rain radar<small>Last 2 hours, animated</small></span></label><label class='opt'><input type='checkbox' data-l='warn'><span>Storm warnings<small>Live weather service warnings and watches</small></span></label><label class='opt'><input type='checkbox' data-l='spc'><span>Today's storm risk<small>Chance of severe storms today</small></span></label><label class='opt'><input type='checkbox' data-l='mesh'><span>Hail size by day<small>Radar hail sizes, one storm day at a time</small></span></label><p class='sub'>Radar sizes are estimates, so they show as possible hail.</p></div>
 <div class='sheet info' id='sh_info' role='dialog' aria-label='About this map'><div class='grab'></div><h3>About this map<button class='ic' data-close type='button'>&times;</button></h3><p><b>Sales status:</b> knocking Garland/Rowlett for the 4/27/2026 storm. 174 days left in the 1-year window.</p><ul><li><b>Mon Apr 27, 2026 Garland/Rowlett</b>: knocking now.</li><li><b>Fri Sep 11, 2026 S Arlington</b> (#1 in the list)</li><li><b>Mon Sep 21, 2026 Keller</b>: not cleared for sales</li><li><b>Sun Sep 27, 2026 Willow Park</b>: not cleared for sales</li></ul><h4>What the labels mean</h4><p><b>&#10003; Confirmed hail</b>: at least two separate hail reports nearby.<br><b>Possible hail</b>: a radar estimate or a single report.</p><h4>Days left</h4><p>Counted 1 year from the storm date. Each policy sets its own deadline, and some are shorter. Knock lists only show storms from the last year. We don't file claims.</p><p class='fine'>This shows where hail fell, not roof damage. Distances are straight-line from Wylie.</p><details class='fine'><summary>Where the data comes from</summary><p>Government weather records (NOAA, National Weather Service), volunteer hail reports (CoCoRaHS), weather radar, RainViewer, Esri and OpenStreetMap maps, and free address lookups. Updated Nov 4, 6:45 AM CT.</p></details></div>
 <div class='sheet info' id='sh_hinfo' role='dialog' aria-label='What this means'><div class='grab'></div><h3>What this means<button class='ic' data-close type='button'>&times;</button></h3><p><b>&#10003; Confirmed</b> = at least two separate hail reports nearby.</p><p><b>Possible</b> = radar estimate or a single report.</p><p>This shows where hail fell, not roof damage. Sizes from radar are estimates.</p></div>
-<div class='sheet' id='sh_more' role='dialog' aria-label='More'><div class='grab'></div><h3>More<button class='ic' data-close type='button'>&times;</button></h3><button class='btn' type='button' data-more='terr'>&#128205; Territory</button><button class='btn' type='button' data-more='sum'>&#128203; Daily Summary</button><button class='btn' type='button' data-more='lists'>&#9776; Lists</button><button class='btn' type='button' data-more='pitch'>&#128208; Pitch gauge</button><button class='btn' type='button' data-more='set'>&#9881; Settings</button></div>
+<div class='sheet' id='sh_more' role='dialog' aria-label='More'><div class='grab'></div><h3>More<button class='ic' data-close type='button'>&times;</button></h3><div class='moregrid'><button class='mtile' type='button' data-more='hm'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M8 6h12M8 12h12M8 18h12'/><path d='M4 6h.01M4 12h.01M4 18h.01'/></svg>Home history</button><button class='mtile' type='button' data-more='terr'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M12 21s7-6.1 7-11a7 7 0 1 0-14 0c0 4.9 7 11 7 11z'/><circle cx='12' cy='10' r='2.1'/></svg>Territory</button><button class='mtile' type='button' data-more='sum'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><rect x='6' y='3.5' width='12' height='17' rx='2'/><path d='M9 3.5h6V6H9zM8.5 11h7M8.5 15h5'/></svg>Daily Summary</button><button class='mtile' type='button' data-more='lists'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' aria-hidden='true'><path d='M9 7h11M9 12h11M9 17h11'/><circle cx='5' cy='7' r='1.15' fill='currentColor' stroke='none'/><circle cx='5' cy='12' r='1.15' fill='currentColor' stroke='none'/><circle cx='5' cy='17' r='1.15' fill='currentColor' stroke='none'/></svg>Lists</button><button class='mtile' type='button' data-more='pitch'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round' aria-hidden='true'><path d='M3 18h18'/><path d='M5 18 L12 8 L19 18'/></svg>Pitch gauge</button><button class='mtile set' type='button' data-more='set'><svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.75' stroke-linecap='round' aria-hidden='true'><circle cx='12' cy='12' r='3'/><path d='M12 3.5v2.2M12 18.3V21M3.5 12h2.2M18.3 12H21M5.8 5.8l1.6 1.6M16.6 16.6l1.6 1.6M18.2 5.8l-1.6 1.6M7.4 16.6l-1.6 1.6'/></svg>Settings</button></div></div>
 <nav class='bnav'><button type='button' data-go='map' class='on'><span>&#128506;</span>Map</button><button type='button' data-go='wx' id='nav_wx'><span>&#9928;</span>Weather</button><button type='button' data-go='scan' id='nav_scan'><span>&#128247;</span>Roof Scan</button><button type='button' data-go='canv' id='nav_canv'><span>&#128682;</span>Canvass</button><button type='button' data-sh='sh_more' id='nav_more'><span>&#8943;</span>More</button><button type='button' data-go='lists' id='nav_lists' hidden><span>&#9776;</span>Lists</button><button type='button' data-go='pitch' id='nav_pitch' hidden><span>&#128208;</span>Pitch</button><button type='button' data-sh='sh_set' id='nav_set' hidden><span>&#9881;</span>Settings</button></nav>
 <script>/* ---------- Address search + "use my location" (added 2026-10-01) ----------
    Shared by the phone canvass map (/) and the dashboard (/dashboard/); inlined at build time.
@@ -606,7 +610,7 @@ var CSS='#wxv{position:fixed;inset:0;z-index:1500;background:var(--bg);overflow-
 var st=document.createElement('style');st.textContent=CSS;document.head.appendChild(st);
 var v=document.createElement('div');v.id='wxv';v.setAttribute('role','dialog');v.setAttribute('aria-label','Weather');
 v.innerHTML='<div class="wh"><div class="wt"><b>&#9928; Weather</b><button class="ic" type="button" id="wxv_x" aria-label="Close">&times;</button></div>'+
-'<form id="wxv_f"><input id="wxv_q" type="search" inputmode="search" placeholder="City or ZIP (e.g. Plano or 75098)" autocomplete="off"><button class="go" type="submit">Search</button></form></div><div class="bd" id="wxv_b"></div>';
+'<form id="wxv_f"><input id="wxv_q" type="search" inputmode="search" placeholder="City or ZIP (e.g. Plano or 75098)" autocomplete="off"><button class="go" type="submit">Search</button></form></div><div class="bd" id="wxv_b"></div><div id="wxv_hm"></div>';
 document.body.appendChild(v);
 var DEF={lat:33.0151,lon:-96.5389,name:'Wylie, TX 75098'},KEY='wxv_place',cur=null;
 try{cur=JSON.parse(localStorage.getItem(KEY))}catch(e){}if(!cur||cur.lat==null)cur=DEF;
@@ -629,6 +633,7 @@ function err(m){B.innerHTML='<div class="err">&#9888; '+esc(m)+'</div>'}
 function n(x){return x==null||isNaN(x)?'n/a':Math.round(x)}
 function load(p){cur=p;try{localStorage.setItem(KEY,JSON.stringify(p))}catch(e){}
  B.innerHTML='<div class="cd mu">Loading weather for '+esc(p.name)+'&hellip;</div>';
+ if(window.HailOutlook)HailOutlook.read(p.lat,p.lon,p.name);
  var u='https://api.open-meteo.com/v1/forecast?latitude='+p.lat+'&longitude='+p.lon+
   '&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation'+
   '&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m,wind_gusts_10m'+
@@ -1175,7 +1180,7 @@ function lookup(lat,lon,label,prec,interp){LASTQ=[lat,lon,label,prec];var box=$(
       if(miss)h+='<p class="sub">Some storm days did not load. Search again to finish.</p>';
    var inA=AR.filter(function(a){return a.g&&AddrSearch.inGeom(lat,lon,a.g)});
    if(inA.length)h+='<p class="sub">Inside knock area <a href="#a'+inA[0].n+'" onclick="document.getElementById(\'topgrp\').open=true">#'+inA[0].n+' '+E(inA[0].nm)+'</a></p>';
-   h+='<button class="btn" data-nav="'+lat+','+lon+'">&#10148; Directions</button><span id="roofbtn"></span>';
+   h+='<button class="btn" data-nav="'+lat+','+lon+'">&#10148; Directions</button><button class="btn s" type="button" data-hm="'+lat+','+lon+'" data-hml="'+E(label)+'">Home history</button><span id="roofbtn"></span>';
    box.innerHTML=h;roofLink(lat,lon);showRes(lat,lon,label,list,lay)})})}
 // ---------- 2026-10-07d hail history list (rows like the owner's reference app) ----------
 function histDays(MI,lat,lon,days){var seen={},out=days.slice();days.forEach(function(d){seen[d]=1});var dl=0.15,dn=0.15/Math.cos(lat*Math.PI/180);
@@ -1183,6 +1188,7 @@ function histDays(MI,lat,lon,days){var seen={},out=days.slice();days.forEach(fun
 function hsz(v){return v?(v>=2.5?'2.5"+':(+v.toFixed(2))+'"'):'---'}
 function histHtml(lat,lon,lay,reps){var rows=AddrSearch.hailHistory(lat,lon,lay,reps).filter(function(e){return inR(e.d)});
  var h='<div class="hh"><div class="hh-t">Hail history <small>newest first</small><button class="ib" type="button" data-hinfo aria-label="What this means">&#9432;</button></div>';
+ h+='<p class="meta">These rows follow the dates turned on for the map. Home history lists every hail date on file, with no date cap.</p>';
  if(!rows.length)return h+'<p class="meta">No hail within 10 miles in this time range.</p></div>';
  rows.forEach(function(e){var l=left(e.d),fa=e.fact||AR.some(function(a){return a.d==e.d&&a.g&&AddrSearch.inGeom(lat,lon,a.g)});
   h+='<div class="hr'+(e.at?' at':'')+'"><div class="hl"><b>'+md(e.d)+'</b><span>'+(e.at?'<em>'+hsz(e.at)+'</em> at the house':'none at the house')+'</span></div>'+
@@ -1293,9 +1299,9 @@ setInterval(function(){if(document.hidden||!M)return;if(ON.radar)radarLoad();if(
 setInterval(radarTick,600);
 // ---------- bottom nav ----------
 // 2026-11-02: full-screen views (Weather, Roof Scan, Canvass, Daily Summary) close each other; More sheet reaches Lists/Pitch/Settings/Summary
-var VIEWS={wx:'WXV',scan:'RSV',canv:'CVV',sum:'DSV',terr:'TRV'};
+var VIEWS={wx:'WXV',scan:'RSV',canv:'CVV',sum:'DSV',terr:'TRV',hm:'HMV'};
 function closeViews(keep){for(var k in VIEWS)if(k!=keep&&window[VIEWS[k]])window[VIEWS[k]].close()}
-window.FVmark=function(g){document.querySelectorAll('.bnav button').forEach(function(x){x.classList.toggle('on',x.dataset.go==g||((g=='sum'||g=='terr')&&x.id=='nav_more'))})};
+window.FVmark=function(g){document.querySelectorAll('.bnav button').forEach(function(x){x.classList.toggle('on',x.dataset.go==g||((g=='sum'||g=='terr'||g=='hm')&&x.id=='nav_more'))})};
 window.FVnav=function(g){var b=document.querySelector('.bnav button[data-go="'+g+'"]');if(b)b.click()};
 document.querySelectorAll('.bnav button').forEach(function(b){b.onclick=function(){
  var g=b.dataset.go;closeViews(g);if(openSh)sheet(openSh,false);document.querySelectorAll('.bnav button').forEach(function(x){x.classList.toggle('on',x===b)});if(b.dataset.sh){if(b.id=='nav_set')FVmark('');sheet(b.dataset.sh,true);return}
@@ -1306,7 +1312,7 @@ document.querySelectorAll('.bnav button').forEach(function(b){b.onclick=function
  if(g=='lists'){FVmark('map');$('topgrp').open=true;$('lists').scrollIntoView({behavior:'smooth'})}
  if(g=='pitch'){var p=$('pg-btn');if(p)p.click();FVmark('map')}}});
 document.querySelectorAll('[data-more]').forEach(function(b){b.onclick=function(){var m=b.dataset.more;sheet('sh_more',false);
- if(m=='sum'){closeViews('sum');DSV.open()}else if(m=='terr'){closeViews('terr');if(window.TRV)TRV.open()}else if(m=='lists')$('nav_lists').click();else if(m=='pitch')$('nav_pitch').click();else if(m=='set')$('nav_set').click()}});
+ if(m=='sum'){closeViews('sum');DSV.open()}else if(m=='hm'){closeViews('hm');if(window.HMV)HMV.open()}else if(m=='terr'){closeViews('terr');if(window.TRV)TRV.open()}else if(m=='lists')$('nav_lists').click();else if(m=='pitch')$('nav_pitch').click();else if(m=='set')$('nav_set').click()}});
 // ---------- status chips: live in the browser ----------
 // 2026-10-07h: knocking chip is a picker (any active area in the 365-day window, or search an area); choice saved on device
 function mkSheet(id,title){var d=document.createElement('div');d.className='sheet';d.id=id;d.setAttribute('role','dialog');d.innerHTML='<div class="grab"></div><h3>'+title+'<button class="ic" type="button" data-x>&times;</button></h3><div class="bd"></div>';document.body.appendChild(d);d.querySelector('[data-x]').onclick=function(){sheet(id,false)};return d}
@@ -1359,6 +1365,14 @@ var SEV=/tornado|severe thunderstorm|flash flood|hail|extreme wind|hurricane|tro
  chk();setInterval(function(){if(!document.hidden)chk()},300000);
  WXS.querySelector('.wxmore').onclick=function(){sheet('sh_wx',false);$('nav_wx').click()};
  chip.onclick=function(){wxOpen(null)};notes.addEventListener('click',function(e){var t=e.target.closest('[data-wx]');if(t)wxOpen(t.dataset.wx)})})();
+window.HailStore={
+  loadLookup:function(){return loadSide('lookup')},
+  loadDays:function(days){return Promise.all(days.map(loadDay))},
+  lookup:function(){return SIDE.lookup},
+  mesh:function(d){return d in MESHD?MESHD[d]:undefined},
+  pin:function(){return LASTQ},
+  center:function(){return M?{lat:M.getCenter().lat,lon:M.getCenter().lng}:null}
+};
 if(window.L)initMap();
 })();
 </script>
@@ -1418,5 +1432,7 @@ if(window.L)initMap();
 </script>
 
 <script src='territory.js'></script>
+<script src='hail-meter.js'></script>
+<script src='hail-outlook.js'></script>
 <script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' crossorigin='' onload='initMap()' async></script>
 </body></html>
