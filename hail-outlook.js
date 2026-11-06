@@ -81,13 +81,8 @@
   var host = document.getElementById('wxv_hm');
   if (!host) return;
   host.innerHTML = '<div class="cd"><h4>Hail outlook</h4><div id="ol_where" class="mu">Same place as this forecast.</div>' +
-    '<div id="ol_rate"></div><div id="ol_days"></div><p class="mu" id="ol_note"></p></div>' +
-    '<div class="cd"><h4>How this outlook is set</h4><ul>' +
-    '<li><b>Elevated</b> — SPC hail probability 15% or higher on day 1 or 2, or an Open-Meteo day coded 96 or 99 (thunderstorm with hail).</li>' +
-    '<li><b>Limited</b> — SPC hail area of 5% and under 15%, or an Open-Meteo day coded 95 (thunderstorm, hail not in the code).</li>' +
-    '<li><b>Lower</b> — SPC hail outlook under 5%, and Open-Meteo has no thunderstorm or hail code in the next 7 days.</li>' +
-    '<li><b>Data unavailable</b> — that feed did not answer. A missing feed is never filled in. If only one feed answers, the level uses that feed alone.</li>' +
-    '</ul><p class="mu">SPC percentages are the chance of 1" or larger hail within 25 miles of a point (NOAA Storm Prediction Center). They are not a promise for one house, and “less than 5%” is not 0%. Day 3 has no SPC hail layer. A Day 3 severe category, when shown, is not a hail percent. Open-Meteo codes describe the daily forecast, not a measured stone.</p></div>';
+    '<div id="ol_rate"></div><div id="ol_days"></div><p class="mu" id="ol_note"></p>' +
+    '<button type="button" class="src-link" data-sources>Sources</button></div>';
 
   var $ = function (id) { return document.getElementById(id); };
   var seq = 0;
@@ -114,7 +109,7 @@
     $('ol_where').textContent = label || 'This place';
     $('ol_rate').textContent = 'Checking…';
     $('ol_days').innerHTML = '';
-    $('ol_note').textContent = 'Checking the SPC hail outlook and the Open-Meteo forecast codes…';
+    $('ol_note').textContent = 'Checking the hail outlook…';
     var spcUrls = [
       'https://www.spc.noaa.gov/products/outlook/day1otlk_hail.lyr.geojson',
       'https://www.spc.noaa.gov/products/outlook/day2otlk_hail.lyr.geojson'
@@ -154,8 +149,7 @@
       var miss = [];
       if (!res[0].ok || !res[1].ok) miss.push('an SPC hail day');
       if (!om.ok) miss.push('Open-Meteo');
-      $('ol_note').textContent = (miss.length ? ('Missing: ' + miss.join(' and ') + '. That part is data unavailable and is not guessed. ') : 'SPC hail outlook and Open-Meteo both answered. ') +
-        'Source: NOAA SPC convective hail outlook (Day 1 and Day 2) and Open-Meteo daily weather codes.';
+      $('ol_note').textContent = miss.length ? ('Missing: ' + miss.join(' and ') + '. That part is data unavailable and is not guessed.') : '';
     });
   }
   window.HailOutlook = { read: read };

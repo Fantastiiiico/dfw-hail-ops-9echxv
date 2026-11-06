@@ -89,6 +89,7 @@
   root.id = 'hmv'; root.setAttribute('role', 'dialog'); root.setAttribute('aria-label', 'Home history');
   root.innerHTML = '<div class="wh"><div class="wt"><b>Home history</b><button class="ic" type="button" id="hm_x" aria-label="Close">&times;</button></div></div>' +
     '<div class="bd"><p class="mu">Every hail date on file near this place, then wind, flood, and the public record of the house. Scroll for the older dates. Nothing here is a guess.</p>' +
+    '<button type="button" class="src-link" data-sources>Sources</button>' +
     '<form id="hm_f"><label for="hm_q">Address, street, city, or ZIP</label>' +
     '<input id="hm_q" type="search" inputmode="search" enterkeyhint="search" placeholder="75098 or 100 N Ballard Ave" autocomplete="off">' +
     '<div id="hm_sug" class="sug" role="listbox"></div>' +
@@ -98,7 +99,7 @@
     '<div class="filt"><div><label for="hh_rad">Radius</label><select id="hh_rad"><option value="1">1 mile</option><option value="3">3 miles</option><option value="10" selected>10 miles</option><option value="25">25 miles</option></select></div>' +
     '<div><label for="hh_sz">Smallest hail</label><select id="hh_sz"><option value="0">Any size</option><option value="0.75">0.75" and up</option><option value="1">1.00" and up</option><option value="1.5">1.50" and up</option><option value="2">2.00" and up</option></select></div></div>' +
     '<h3>Hail dates <span id="hh_count"></span></h3><div id="hh_hail"></div><p class="mu" id="hh_hail_src"></p>' +
-    '<h3>Wind and tornado</h3><div id="hh_wind"></div><p class="mu" id="hh_wind_src"></p>' +
+    '<h3>Wind and tornado</h3><div id="hh_wind"></div>' +
     '<h3>Flood</h3><div id="hh_flood"></div>' +
     '<h3>County disaster declarations</h3><div id="hh_dec"></div>' +
     '<h3>The house</h3><div id="hh_prop"></div>' +
@@ -160,9 +161,8 @@
     $('hh_count').textContent = rows.length ? ('· ' + rows.length) : '· 0';
     if (!rows.length) box.innerHTML = '<div class="row"><b>No hail date in this radius and size</b><div class="sub">The files loaded. Nothing was dropped for being old. Widen the radius or lower the size to see more.</div></div>';
     else box.innerHTML = rows.map(function (r) { return row(r.date, r.lines, r.near, r.flag); }).join('');
-    var span = state.span ? (' Ground reports in this app run ' + state.span[0] + ' through ' + state.span[1] + '.') : '';
-    src.textContent = 'Source: NWS and CoCoRaHS ground reports already in this app (the file does not tag each older point as SPC or NCEI).' + span +
-      ' Radar rows are MRMS MESH swaths in this app, from Oct 2020. ' + (state.radarNote || '');
+    src.textContent = (state.radarNote && /Checking|did not load/.test(state.radarNote)) ? state.radarNote : '';
+    if (window.Sources && state.span) Sources.note('hail', 'Ground reports in this app run ' + state.span[0] + ' through ' + state.span[1] + '.');
   }
 
   function takeNearest(prev, dist, size, fam) {
@@ -235,7 +235,6 @@
     if (state.iem.bad) {
       wind.innerHTML = '<div class="row"><b>Data unavailable</b><div class="sub">The NWS local storm report feed did not answer. No wind or tornado report was filled in.</div></div>';
       flood.innerHTML = (state.zoneHtml || '') + '<div class="row"><b>Flood reports: data unavailable</b><div class="sub">The same NWS report feed did not answer.</div></div>' + (state.nceiHtml || '');
-      $('hh_wind_src').textContent = 'Source: Iowa Environmental Mesonet, NWS local storm reports for the Fort Worth office (FWD).';
       return;
     }
     function block(arr, empty) {
@@ -252,10 +251,12 @@
     var zone = state.zoneHtml || '';
     var ncei = state.nceiHtml || '';
     flood.innerHTML = zone + floodReports + ncei;
-    $('hh_wind_src').textContent = 'Source: NWS local storm reports compiled by the Iowa Environmental Mesonet for the Fort Worth office (FWD)' +
-      (state.iem.fileSpan ? ('. The file that answered runs ' + state.iem.fileSpan[0] + ' through ' + state.iem.fileSpan[1]) : '') +
-      (state.iem.span ? ('. Reports within 25 miles run ' + state.iem.span[0] + ' through ' + state.iem.span[1]) : '') +
-      '. Hail reports from that feed are not repeated here. A report is a spotter or station report near the point, not damage confirmed at the house.';
+    if (window.Sources) {
+      var bits = [];
+      if (state.iem.fileSpan) bits.push('The file that answered runs ' + state.iem.fileSpan[0] + ' through ' + state.iem.fileSpan[1] + '.');
+      if (state.iem.span) bits.push('Reports within 25 miles run ' + state.iem.span[0] + ' through ' + state.iem.span[1] + '.');
+      Sources.note('iem', bits.join(' '));
+    }
   }
 
   var PARCELS = [

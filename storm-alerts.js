@@ -298,7 +298,6 @@
           '<span class="as-desc">' + esc(Lgc.describeEvent(ev)) + '</span></span></button>';
       }).join('');
       if (arranged.more > 0) html += '<p class="as-note">' + arranged.more + ' more in this view.</p>';
-      html += '<p class="as-src">Distances are from the map center. Live alerts are National Weather Service watches and warnings. Closed hail is this map\'s published hail history.</p>';
     }
     listEl.innerHTML = html;
     var exp = document.getElementById('asExpand');
@@ -485,7 +484,7 @@
     }).join('');
     sheet.innerHTML = '<button type="button" class="as-grab" id="asGrab" aria-expanded="true" aria-label="Show or hide the alert list"><i></i></button>' +
       '<div class="as-titlebar"><h2 id="asTitle">Alerts in this area</h2><label class="as-tog"><input type="checkbox" id="asIcons"' + (state.icons ? ' checked' : '') + '> Map icons</label></div>' +
-      '<div class="as-chips" role="tablist">' + chips + '</div><div id="asList" aria-live="polite"></div>';
+      '<div class="as-chips" role="tablist">' + chips + '</div><button type="button" class="src-link" data-sources>Sources</button><div id="asList" aria-live="polite"></div>';
     wrap.appendChild(sheet);
     sheet.querySelector('#asGrab').onclick = function () {
       state.collapsed = !state.collapsed;
