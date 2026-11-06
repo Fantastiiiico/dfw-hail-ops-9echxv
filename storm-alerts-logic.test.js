@@ -14,15 +14,18 @@ var svr = L.categorize({
   headline: 'Severe Thunderstorm Warning issued November 3 at 11:25AM CST',
   parameters: { maxWindGust: ['60 MPH'], hailThreat: ['RADAR INDICATED'], windThreat: ['RADAR INDICATED'], maxHailSize: ['0.00'] }
 });
-assert.deepStrictEqual(svr.cats.slice().sort(), ['hail', 'wind']);
+assert.deepStrictEqual(svr.cats.slice().sort(), ['hail', 'thunderstorm', 'wind']);
+assert.strictEqual(svr.kind, 'thunderstorm');
 assert.strictEqual(svr.hailSize, null);
 assert.strictEqual(svr.windGust, '60 MPH');
 
 var tor = L.categorize({ event: 'Tornado Warning', headline: 'Tornado Warning issued November 3', parameters: {} });
 assert.deepStrictEqual(tor.cats, ['tornado']);
+assert.strictEqual(tor.kind, 'tornado');
 
 var wind = L.categorize({ event: 'Wind Advisory', headline: 'Wind Advisory issued November 3', parameters: {} });
 assert.deepStrictEqual(wind.cats, ['wind']);
+assert.strictEqual(wind.kind, 'wind');
 
 var frost = L.categorize({ event: 'Frost Advisory', headline: 'Frost Advisory', parameters: {} });
 assert.deepStrictEqual(frost.cats, []);
@@ -68,6 +71,7 @@ assert.strictEqual(testSkip.length, 0);
 
 var named = L.namedHail([{ d: '2026-04-27', lat: 32.89, lon: -96.41, nm: 'Rockwall / Dallas', gm: 2.75 }], 'ar');
 assert.strictEqual(named[0].title, 'Hail · Rockwall / Dallas');
+assert.strictEqual(named[0].kind, 'hail');
 assert.strictEqual(named[0].inches, '2.75"');
 assert.strictEqual(named[0].status, 'closed');
 assert.ok(/Largest hail on file: 2.75"/.test(L.describeEvent(named[0])));
@@ -117,7 +121,15 @@ assert.strictEqual(L.listMode({ inViewCount: 0, waiting: false, note: '' }), 'em
 
 assert.strictEqual(L.inches(2.5), '2.5"');
 assert.strictEqual(L.inches(0), null);
-assert.strictEqual(L.markerCat({ cats: ['tornado', 'hail'] }, 'all'), 'tornado');
-assert.strictEqual(L.markerCat({ cats: ['tornado', 'hail'] }, 'hail'), 'hail');
+assert.strictEqual(L.markerCat({ kind: 'tornado', cats: ['tornado', 'hail'] }), 'tornado');
+assert.strictEqual(L.markerCat({ kind: 'hail', cats: ['hail'], source: 'hail-area' }), 'hail');
+var snow = L.categorize({ event: 'Winter Storm Warning', headline: 'Winter Storm Warning issued for Dallas', parameters: {} });
+assert.strictEqual(snow.kind, 'snow');
+assert.deepStrictEqual(snow.cats, ['snow']);
+assert.strictEqual(L.kindColor('snow'), '#7c3aed');
+assert.strictEqual(L.kindColor('thunderstorm'), '#d97706');
+assert.strictEqual(L.kindColor('hail'), '#1d4ed8');
+assert.strictEqual(L.kindColor('wind'), '#0f766e');
+assert.strictEqual(L.kindColor('tornado'), '#dc2626');
 
 console.log('storm-alerts-logic: ' + 28 + ' checks passed');

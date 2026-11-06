@@ -105,17 +105,22 @@
     var windThreat = firstParam(p, 'windThreat');
     var torDet = firstParam(p, 'tornadoDetection');
     var cats = [];
+    var snowName = /snow|blizzard|winter storm|winter weather|snow squall|lake effect snow/.test(el);
     if (/tornado/.test(el)) cats.push('tornado');
+    if (/thunderstorm/.test(el)) cats.push('thunderstorm');
+    if (snowName) cats.push('snow');
     var hail = /hail/.test(el) || !!hailSize || !!hailThreat || (/severe thunderstorm/.test(el) && /hail/.test(text));
     var wind = /wind/.test(el) || !!windGust || !!windThreat || (/severe thunderstorm/.test(el) && /\bwind\b|gust/.test(text));
-    if (!cats.length && /special weather statement|severe weather statement/.test(el)) {
+    if (/special weather statement|severe weather statement/.test(el)) {
       if (/tornado/.test(text)) cats.push('tornado');
       if (/hail/.test(text)) hail = true;
       if (/\bwind\b|gust/.test(text)) wind = true;
+      if (/\bsnow\b|blizzard/.test(text)) cats.push('snow');
     }
     if (hail && cats.indexOf('hail') < 0) cats.push('hail');
     if (wind && cats.indexOf('wind') < 0) cats.push('wind');
     return {
+      kind: visualKind(el, text, cats),
       cats: cats,
       hailSize: hailSize,
       windGust: windGust,
@@ -126,6 +131,19 @@
       }
     };
   }
+  function visualKind(el, text, cats) {
+    if (cats.indexOf('tornado') >= 0 && (/tornado/.test(el) || /tornado/.test(text))) return 'tornado';
+    if (cats.indexOf('snow') >= 0) return 'snow';
+    if (cats.indexOf('thunderstorm') >= 0 || /thunderstorm/.test(el)) return 'thunderstorm';
+    if (cats.indexOf('hail') >= 0 && cats.indexOf('wind') < 0) return 'hail';
+    if (cats.indexOf('wind') >= 0 && cats.indexOf('hail') < 0) return 'wind';
+    if (/thunder/.test(text)) return 'thunderstorm';
+    if (cats.indexOf('hail') >= 0) return 'hail';
+    if (cats.indexOf('wind') >= 0) return 'wind';
+    return 'wind';
+  }
+  var KIND_COLOR = { tornado: '#dc2626', thunderstorm: '#d97706', hail: '#1d4ed8', wind: '#0f766e', snow: '#7c3aed' };
+  function kindColor(kind) { return KIND_COLOR[kind] || '#0A2748'; }
   function vtecParts(p) {
     var v = firstParam(p, 'VTEC');
     if (!v) return null;
@@ -196,6 +214,7 @@
       return {
         id: 'nws:' + key,
         source: 'nws',
+        kind: display.info.kind,
         cats: display.info.cats,
         event: display.p.event,
         area: clean(display.p.areaDesc || latest.p.areaDesc || ''),
@@ -229,6 +248,7 @@
       return {
         id: kind + ':' + i,
         source: 'hail-area',
+        kind: 'hail',
         cats: ['hail'],
         date: a.d,
         name: a.nm || '',
@@ -258,6 +278,7 @@
       return {
         id: 'swath:' + day,
         source: 'swath',
+        kind: 'hail',
         cats: ['hail'],
         date: day,
         lat: anchor.lat,
@@ -416,10 +437,16 @@
       return (b.when || 0) - (a.when || 0);
     });
   }
-  function markerCat(ev, filter) {
-    if (filter === 'hail' || filter === 'wind' || filter === 'tornado') return filter;
-    if ((ev.cats || []).indexOf('tornado') >= 0) return 'tornado';
-    if ((ev.cats || []).indexOf('hail') >= 0) return 'hail';
+  function markerCat(ev) {
+    if (ev && ev.kind && KIND_COLOR[ev.kind]) return ev.kind;
+    var cats = (ev && ev.cats) || [];
+    if (cats.indexOf('tornado') >= 0) return 'tornado';
+    if (cats.indexOf('snow') >= 0) return 'snow';
+    if (cats.indexOf('thunderstorm') >= 0) return 'thunderstorm';
+    if (cats.indexOf('hail') >= 0 && cats.indexOf('wind') < 0) return 'hail';
+    if (cats.indexOf('wind') >= 0 && cats.indexOf('hail') < 0) return 'wind';
+    if (cats.indexOf('hail') >= 0) return 'hail';
+    if (ev && ev.source && ev.source !== 'nws') return 'hail';
     return 'wind';
   }
   function boundsAt(center, zoom, size, project, unproject) {
@@ -434,7 +461,7 @@
     contains: contains, anchorOf: anchorOf, bboxOf: bboxOf, distToEvent: distToEvent, distText: distText,
     daysBetween: daysBetween, daysAgoLabel: daysAgoLabel, agoFromMs: agoFromMs, dateLabel: dateLabel,
     describeEvent: describeEvent, placeTitle: placeTitle, feedWaiting: feedWaiting, feedNote: feedNote,
-    listMode: listMode, sortEvents: sortEvents, markerCat: markerCat, boundsAt: boundsAt, inches: inches,
+    listMode: listMode, sortEvents: sortEvents, markerCat: markerCat, kindColor: kindColor, KIND_COLOR: KIND_COLOR, boundsAt: boundsAt, inches: inches,
     pointIn: pointIn, vtecParts: vtecParts
   };
 })(typeof window !== 'undefined' ? window : this);

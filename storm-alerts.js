@@ -13,9 +13,11 @@
   };
 
   var ICO = {
-    hail: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="8" cy="9" r="2.2" fill="currentColor"/><circle cx="15" cy="8" r="1.7" fill="currentColor"/><circle cx="12.5" cy="14.5" r="2.1" fill="currentColor"/></svg>',
-    wind: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 8h10a2.5 2.5 0 1 0-2.4-2.5"/><path d="M4 12h14a2.5 2.5 0 1 1-2.4 2.5"/><path d="M4 16h8"/></svg>',
-    tornado: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7h18"/><path d="M6 11h12"/><path d="M9 15h6"/><path d="M12 15v4"/></svg>'
+    hail: '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><circle cx="7.5" cy="8" r="2.3" fill="currentColor"/><circle cx="15.5" cy="7.2" r="1.7" fill="currentColor"/><circle cx="12" cy="14.2" r="2.6" fill="currentColor"/><circle cx="16.2" cy="15.6" r="1.3" fill="currentColor"/></svg>',
+    wind: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 8h11a2.4 2.4 0 1 0-2.2-2.4"/><path d="M3 12h15a2.4 2.4 0 1 1-2.2 2.4"/><path d="M3 16h8"/></svg>',
+    tornado: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M3 4.2h18L14.2 11h-.8l.9 2.6h-1.6L11.4 18h-1.5l1.3-4.4H9.4L10.2 11H9.2L3 4.2z"/></svg>',
+    thunderstorm: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M13.2 1.6L4.6 13.2h6.1l-1.2 9.2 9.9-13.4h-6.2l1.2-7.4z"/></svg>',
+    snow: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 3v18M5.1 7.1l13.8 9.8M18.9 7.1L5.1 16.9"/><path d="M12 7.2l1.5-1.3M12 7.2L10.5 5.9M12 16.8l1.5 1.3M12 16.8l-1.5 1.3M8.2 9.2L6.8 8.4M8.2 9.2l.2-1.8M15.8 14.8l1.4.8M15.8 14.8l-.2 1.8M15.8 9.2l1.4-.8M15.8 9.2l-.2-1.8M8.2 14.8L6.8 15.6M8.2 14.8l.2 1.8"/></svg>'
   };
   var CHECK = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg>';
 
@@ -78,8 +80,10 @@
     selected: null,
     collapsed: false,
     expandNote: '',
-    list: []
+    list: [],
+    icons: true
   };
+  try { state.icons = localStorage.getItem('varroAlertMapIcons') !== '0'; } catch (e) {}
   var ZONE = {};
   var M = null;
   var layer = null;
@@ -112,20 +116,12 @@
     });
     return out;
   }
-  function pinColor(ev) {
-    if (ev.status === 'live') return '#B78A2A';
-    if (ev.status === 'unknown') return '#9A3412';
-    if (ev.source === 'hail-area' || ev.source === 'swath') {
-      var age = ev.date ? Lgc.daysBetween(ev.date, todayCT()) : null;
-      if (age != null && age > 365) return '#64748b';
-      return '#0A2748';
-    }
-    return '#64748b';
-  }
+  function typeColor(ev) { return Lgc.kindColor(Lgc.markerCat(ev)); }
   function iconFor(ev) {
-    var cat = Lgc.markerCat(ev, state.filter);
+    var cat = Lgc.markerCat(ev);
     var size = ev.source === 'swath' ? 22 : 28;
-    var html = '<div class="as-pin-i" style="background:' + pinColor(ev) + ';width:' + size + 'px;height:' + size + 'px">' + ICO[cat] + '</div>';
+    var ring = ev.status === 'live' ? '#B78A2A' : '#fff';
+    var html = '<div class="as-pin-i" style="background:' + typeColor(ev) + ';border-color:' + ring + ';width:' + size + 'px;height:' + size + 'px">' + (ICO[cat] || ICO.wind) + '</div>';
     return L.divIcon({ className: 'as-pin', html: html, iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
   }
   function popupHtml(ev) {
@@ -136,23 +132,25 @@
     if (!M || !layer) return;
     var box = boxOf(M.getBounds());
     var pins = state.pins || [];
-    var key = [state.filter, box.w.toFixed(2), box.s.toFixed(2), box.e.toFixed(2), box.n.toFixed(2), pins.map(function (e) { return e.id; }).join(','), geomSerial].join('|');
+    var key = [(state.icons ? '1' : '0'), state.filter, box.w.toFixed(2), box.s.toFixed(2), box.e.toFixed(2), box.n.toFixed(2), pins.map(function (e) { return e.id; }).join(','), geomSerial].join('|');
     if (key === drawKey) return;
     drawKey = key;
     layer.clearLayers();
     pins.forEach(function (ev) {
+      var col = typeColor(ev);
       if (ev.source === 'nws' && ev.geom && Lgc.geomHits(ev.geom, box)) {
         L.geoJSON(ev.geom, {
           interactive: false,
           style: {
-            color: ev.status === 'live' ? '#B78A2A' : '#64748b',
+            color: col,
             weight: ev.status === 'live' ? 2.5 : 1.5,
-            fillColor: ev.status === 'live' ? '#B78A2A' : '#64748b',
-            fillOpacity: ev.status === 'live' ? 0.14 : 0.04,
+            fillColor: col,
+            fillOpacity: ev.status === 'live' ? 0.16 : 0.06,
             dashArray: ev.status === 'live' ? null : '5 4'
           }
         }).addTo(layer);
       }
+      if (!state.icons) return;
       var lat = ev.lat, lon = ev.lon;
       if (lat == null || lon == null || !Lgc.pointIn(lat, lon, box)) return;
       var marker = L.marker([lat, lon], { icon: iconFor(ev), keyboard: true, title: ev.title, zIndexOffset: ev.live ? 500 : 200 });
@@ -290,9 +288,10 @@
       html += shown.map(function (ev, i) {
         var pill = ev.status === 'live' ? 'Live' : ev.status === 'closed' ? 'Closed' : 'data unavailable';
         var cls = ev.status === 'live' ? 'live' : ev.status === 'closed' ? 'closed' : 'unk';
-        var cat = Lgc.markerCat(ev, state.filter);
-        return '<button type="button" class="as-card' + (ev.id === state.selected ? ' on' : '') + '" data-i="' + i + '">' +
-          '<span class="as-ico" style="background:' + pinColor(ev) + '">' + ICO[cat] + '</span>' +
+        var cat = Lgc.markerCat(ev);
+        var col = typeColor(ev);
+        return '<button type="button" class="as-card' + (ev.id === state.selected ? ' on' : '') + '" data-i="' + i + '" style="border-left:5px solid ' + col + '">' +
+          '<span class="as-ico" style="background:' + col + '">' + (ICO[cat] || ICO.wind) + '</span>' +
           '<span class="as-main"><span class="as-top"><span class="as-name">' + esc(ev.title) + '</span>' +
           '<span class="as-pill ' + cls + '">' + esc(pill) + '</span></span>' +
           '<span class="as-meta">' + esc(ev._meta || '') + '</span>' +
@@ -411,7 +410,7 @@
     });
   }
   function loadNws() {
-    var events = 'Tornado Warning,Tornado Watch,Severe Thunderstorm Warning,Severe Thunderstorm Watch,Extreme Wind Warning,High Wind Warning,High Wind Watch,Wind Advisory,Special Weather Statement';
+    var events = 'Tornado Warning,Tornado Watch,Severe Thunderstorm Warning,Severe Thunderstorm Watch,Extreme Wind Warning,High Wind Warning,High Wind Watch,Wind Advisory,Special Weather Statement,Winter Storm Warning,Winter Storm Watch,Winter Weather Advisory,Blizzard Warning,Snow Squall Warning,Lake Effect Snow Warning,Lake Effect Snow Advisory';
     var recentUrl = 'https://api.weather.gov/alerts?area=TX&limit=200&event=' + encodeURIComponent(events);
     var activeUrl = 'https://api.weather.gov/alerts/active?area=TX';
     return Promise.all([loadOne(activeUrl, 'active'), loadOne(recentUrl, 'recent')]).then(function (both) {
@@ -438,7 +437,12 @@
       '.as-chips{display:flex;gap:8px;overflow-x:auto;padding:0 12px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}' +
       '.as-chips::-webkit-scrollbar{display:none}' +
       '.as-chips button{flex:0 0 auto;border:1px solid #e5e7eb;background:#fff;color:#0A2748;border-radius:999px;padding:7px 14px;font:700 14px/1.2 system-ui,-apple-system,sans-serif;cursor:pointer}' +
+      '.as-chips button i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}' +
       '.as-chips button.on{background:#0A2748;color:#fff;border-color:#0A2748}' +
+      '.as-titlebar{display:flex;align-items:center;gap:8px;padding-right:12px}' +
+      '.as-titlebar #asTitle{flex:1;padding-right:0}' +
+      '.as-tog{flex:0 0 auto;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#0A2748;margin:0}' +
+      '.as-tog input{width:18px;height:18px;accent-color:#0A2748;margin:0}' +
       '#asList{overflow:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto;min-height:0;padding-bottom:8px}' +
       '.as-card{display:flex;gap:10px;width:calc(100% - 24px);margin:0 12px 10px;padding:12px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;text-align:left;cursor:pointer;font:inherit;color:inherit}' +
       '.as-card.on{border-color:#B78A2A;box-shadow:0 0 0 1px #B78A2A}' +
@@ -474,16 +478,25 @@
     var sheet = document.createElement('section');
     sheet.id = 'alertSheet';
     sheet.setAttribute('aria-label', 'Storm alerts for the map view');
+    var dots = { hail: '#1d4ed8', wind: '#0f766e', tornado: '#dc2626' };
     var chips = FILTERS.map(function (f) {
-      return '<button type="button" data-f="' + f[0] + '"' + (f[0] === 'all' ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>' + f[1] + '</button>';
+      var dot = dots[f[0]] ? '<i style="background:' + dots[f[0]] + '"></i>' : '';
+      return '<button type="button" data-f="' + f[0] + '"' + (f[0] === 'all' ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>' + dot + f[1] + '</button>';
     }).join('');
     sheet.innerHTML = '<button type="button" class="as-grab" id="asGrab" aria-expanded="true" aria-label="Show or hide the alert list"><i></i></button>' +
-      '<h2 id="asTitle">Alerts in this area</h2><div class="as-chips" role="tablist">' + chips + '</div><div id="asList" aria-live="polite"></div>';
+      '<div class="as-titlebar"><h2 id="asTitle">Alerts in this area</h2><label class="as-tog"><input type="checkbox" id="asIcons"' + (state.icons ? ' checked' : '') + '> Map icons</label></div>' +
+      '<div class="as-chips" role="tablist">' + chips + '</div><div id="asList" aria-live="polite"></div>';
     wrap.appendChild(sheet);
     sheet.querySelector('#asGrab').onclick = function () {
       state.collapsed = !state.collapsed;
       this.setAttribute('aria-expanded', state.collapsed ? 'false' : 'true');
       render();
+    };
+    sheet.querySelector('#asIcons').onchange = function () {
+      state.icons = !!this.checked;
+      try { localStorage.setItem('varroAlertMapIcons', state.icons ? '1' : '0'); } catch (e) {}
+      drawKey = '';
+      drawMarkers();
     };
     [].forEach.call(sheet.querySelectorAll('.as-chips button'), function (b) {
       b.onclick = function () {
