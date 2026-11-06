@@ -97,11 +97,12 @@
   function paint(lv) {
     $('ol_rate').textContent = lv.key === 'na' ? 'Outlook: data unavailable.' : ('Outlook: ' + lv.name + '.');
   }
+  function notableSpc(spc) {
+    return !!(spc && spc.ok && !spc.uncovered && typeof spc.dn === 'number' && spc.dn >= 5);
+  }
   function dayBlock(title, spc) {
-    if (!spc || !spc.ok) return '<div><b>' + esc(title) + '</b>SPC hail outlook: data unavailable.</div>';
-    if (spc.uncovered) return '<div><b>' + esc(title) + '</b>This point is outside the drawn hail areas. The exact percent is data unavailable.</div>';
     var when = (spc.valid ? ct(spc.valid, true) : '') + (spc.expire ? ' – ' + ct(spc.expire, true) : '');
-    var text = spc.label || (spc.dn ? spc.dn + '%' : 'Under 5%');
+    var text = spc.label || (spc.dn + '%');
     return '<div><b>' + esc(title) + (when ? ' · ' + esc(when) : '') + '</b>' + esc(text) + '</div>';
   }
   function read(lat, lon, label) {
@@ -114,13 +115,11 @@
       'https://www.spc.noaa.gov/products/outlook/day1otlk_hail.lyr.geojson',
       'https://www.spc.noaa.gov/products/outlook/day2otlk_hail.lyr.geojson'
     ];
-    var catUrl = 'https://www.spc.noaa.gov/products/outlook/day3otlk_cat.lyr.geojson';
     var omUrl = 'https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon +
       '&daily=weather_code&timezone=America%2FChicago&forecast_days=7';
     Promise.all([
       getJson(spcUrls[0]).then(function (j) { return spcAt(j, lat, lon); }).catch(function () { return { ok: false }; }),
       getJson(spcUrls[1]).then(function (j) { return spcAt(j, lat, lon); }).catch(function () { return { ok: false }; }),
-      getJson(catUrl).then(function (j) { return catAt(j, lat, lon); }).catch(function () { return { ok: false }; }),
       getJson(omUrl).then(function (j) {
         var t = (j.daily && j.daily.time) || [], c = (j.daily && j.daily.weather_code) || [];
         if (!t.length || t.length !== c.length) throw new Error('empty');
@@ -129,27 +128,22 @@
     ]).then(function (res) {
       if (my !== seq) return;
       var days = [{ title: 'Day 1 hail', spc: res[0] }, { title: 'Day 2 hail', spc: res[1] }];
-      var cat = res[2], om = res[3];
+      var om = res[2];
       var lv = level(days, om);
       paint(lv);
-      var html = days.map(function (d) { return dayBlock(d.title, d.spc); }).join('');
-      html += '<div><b>Day 3 hail probability</b>Data unavailable. SPC does not publish a Day 3 hail outlook.</div>';
-      if (!cat.ok) html += '<div><b>Day 3 severe category</b>Data unavailable. This is not used as a hail percent.</div>';
-      else {
-        var when = (cat.valid ? ct(cat.valid, true) : '') + (cat.expire ? ' – ' + ct(cat.expire, true) : '');
-        html += '<div><b>Day 3 severe category' + (when ? ' · ' + esc(when) : '') + '</b>' +
-          (cat.none ? 'No drawn SPC severe area at this point.' : esc(cat.label || 'Category on file')) +
-          ' Not a hail percent.</div>';
+      var html = '';
+      days.forEach(function (d) { if (notableSpc(d.spc)) html += dayBlock(d.title, d.spc); });
+      if (om.ok) {
+        var hot = om.days.filter(function (d) { return d.code === 95 || d.code === 96 || d.code === 99; });
+        if (hot.length) html += '<div><b>Forecast</b>' + hot.map(function (d) {
+          return esc(dayName(d.date)) + ': ' + esc(codeLine(d.code));
+        }).join('<br>') + '</div>';
       }
-      if (!om.ok) html += '<div><b>Open-Meteo daily codes</b>Data unavailable.</div>';
-      else html += '<div><b>Open-Meteo, next 7 days</b>' + om.days.map(function (d) {
-        return esc(dayName(d.date)) + ': ' + esc(codeLine(d.code));
-      }).join('<br>') + '</div>';
       $('ol_days').innerHTML = html;
       var miss = [];
-      if (!res[0].ok || !res[1].ok) miss.push('an SPC hail day');
-      if (!om.ok) miss.push('Open-Meteo');
-      $('ol_note').textContent = miss.length ? ('Missing: ' + miss.join(' and ') + '. That part is data unavailable and is not guessed.') : '';
+      if (!res[0].ok || !res[1].ok) miss.push('SPC hail outlook: data unavailable.');
+      if (!om.ok) miss.push('Forecast codes: data unavailable.');
+      $('ol_note').textContent = miss.join(' ');
     });
   }
   window.HailOutlook = { read: read };

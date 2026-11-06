@@ -36,8 +36,15 @@
     '<p class="note" id="src_note_iem"></p></div>' +
     '<div class="cd"><h2>Map alerts</h2>' +
     '<p>Distances on the alert sheet are from the map center. Live alerts are National Weather Service watches and warnings. Closed hail is this map’s published hail history.</p></div>' +
+    '<div class="cd"><h2>Lists</h2>' +
+    '<p><b>Confirmed hail</b> means at least two separate hail reports nearby.</p>' +
+    '<p><b>Possible hail</b> means a radar estimate or a single report. The card may be radar only, with nobody reporting hail on the ground nearby; one hail report nearby; or the closest hail report 3 to 5 miles away. The Maybe hail section is not for knocking yet.</p>' +
+    '<p>Days left count 1 year from the storm date. Each policy sets its own deadline, and some are shorter. Knock lists only show storms from the last year. We don\'t file claims. Older storms are more than a year old: history only, never knocked.</p>' +
+    '<p>This shows where hail fell, not roof damage. Sizes from radar are estimates. Distances are straight-line from Wylie.</p></div>' +
+    '<div class="cd"><h2>Where the map data comes from</h2>' +
+    '<p>Government weather records (NOAA, National Weather Service), volunteer hail reports (CoCoRaHS), weather radar, RainViewer, Esri and OpenStreetMap maps, and free address lookups. Updated Nov 4, 6:45 AM CT.</p></div>' +
     '<div class="cd"><h2>When a feed does not answer</h2>' +
-    '<p>The screen says data unavailable. Nothing is filled in.</p></div>' +
+    '<p>The screen says data unavailable. Nothing is filled in. Day 3 has no SPC hail probability. A Day 3 severe category is not a hail percent. A point outside the drawn hail areas does not get a made-up percent.</p></div>' +
     '</div>';
   document.body.appendChild(root);
   function open() { root.classList.add('on'); }
