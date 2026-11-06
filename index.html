@@ -659,7 +659,7 @@ function load(p){cur=p;try{localStorage.setItem(KEY,JSON.stringify(p))}catch(e){
    '<div><span class="mu">Sunrise / Sunset</span><b>'+esc(mfmt(d.sunrise[0]))+' / '+esc(mfmt(d.sunset[0]))+'</b></div></div></div>'+
    '<div class="cd"><h4>Next 24 hours <span class="mu">(swipe &rarr;)</span></h4><div class="hrs">'+cards+'</div>'+
    (anyS?'<div class="mu" style="margin-top:4px">Red cards = thunderstorm codes in the forecast; &ldquo;HAIL POSSIBLE&rdquo; = forecast code 96/99. Forecast only, not a hail report.</div>':'')+'</div>'+
-   '<div class="mu" style="padding:0 4px">Forecast: Open-Meteo.com (free, no key). Times Central (CT), &deg;F, mph. Storm warnings still come from the National Weather Service; see the chips on the Map tab.</div>'
+   '<button type="button" class="src-link" data-sources>Sources</button>'
  }).catch(function(e){err('Could not load the forecast for '+p.name+' ('+(e&&e.message||'network error')+'). Check signal and tap Search again. No weather shown rather than a guess.')})}
 function search(q){q=q.trim();if(!q)return;B.innerHTML='<div class="cd mu">Finding &ldquo;'+esc(q)+'&rdquo;&hellip;</div>';
  var z=q.match(/^\d{5}$/);
@@ -1431,8 +1431,11 @@ if(window.L)initMap();
 })();
 </script>
 
+<script src='sources.js'></script>
 <script src='territory.js'></script>
 <script src='hail-meter.js'></script>
 <script src='hail-outlook.js'></script>
+<script src='storm-alerts-logic.js'></script>
+<script src='storm-alerts.js'></script>
 <script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js' crossorigin='' onload='initMap()' async></script>
 </body></html>
