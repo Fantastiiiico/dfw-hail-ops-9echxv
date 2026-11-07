@@ -78,7 +78,7 @@
     feed: { active: 'load', recent: 'load', swath: 'load' },
     place: 'this area',
     selected: null,
-    collapsed: false,
+    collapsed: true,
     expandNote: '',
     list: [],
     icons: true
@@ -426,21 +426,24 @@
     css.textContent = '' +
       '#map{height:calc(100vh - 168px);height:calc(100dvh - 168px);min-height:440px}' +
       '#mapwrap{position:relative}' +
-      '#alertSheet{position:absolute;left:8px;right:8px;bottom:calc(var(--nav, 64px) + env(safe-area-inset-bottom) + 6px);z-index:820;background:#fff;border-radius:18px;box-shadow:0 10px 32px rgba(15,23,42,.18);display:flex;flex-direction:column;height:min(42%, 300px);max-width:744px;margin:0 auto;overflow:hidden}' +
-      '#alertSheet.is-min{height:auto}' +
+      '#alertSheet{position:absolute;left:8px;right:8px;bottom:calc(var(--nav, 64px) + env(safe-area-inset-bottom) + 6px);z-index:820;background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(15,23,42,.16);display:flex;flex-direction:column;height:auto;max-height:42%;max-width:744px;margin:0 auto;overflow:hidden}' +
+      '#alertSheet.is-min{max-height:none}' +
       '#alertSheet.is-min #asList{display:none}' +
-      '#alertSheet .as-grab{display:block;width:100%;border:0;background:transparent;padding:8px 0 2px;cursor:pointer}' +
-      '#alertSheet .as-grab i{display:block;width:40px;height:5px;border-radius:3px;background:#cbd5e1;margin:0 auto}' +
-      '#asTitle,.as-chips{flex:0 0 auto}' +
-      '#asTitle{margin:0;padding:2px 14px 8px;font-size:20px;letter-spacing:-.02em;color:#0A2748;line-height:1.2}' +
-      '.as-chips{display:flex;gap:8px;overflow-x:auto;padding:0 12px 10px;scrollbar-width:none;-webkit-overflow-scrolling:touch}' +
+      '#alertSheet .as-grab{display:block;width:100%;border:0;background:transparent;padding:5px 0 0;cursor:pointer}' +
+      '#alertSheet .as-grab i{display:block;width:36px;height:4px;border-radius:3px;background:#cbd5e1;margin:0 auto}' +
+      '#asTitle,.as-chips,.as-bar{flex:0 0 auto}' +
+      '#asTitle{margin:0;padding:1px 10px 0;font-size:17px;letter-spacing:-.02em;color:#0A2748;line-height:1.15}' +
+      '.as-bar{display:flex;align-items:center;gap:6px;padding:4px 8px 6px}' +
+      '.as-bar .as-chips{flex:1;min-width:0;padding:0}' +
+      '.as-bar .src-link{margin:0;flex:0 0 auto;font-size:13px}' +
+      '.as-chips{display:flex;gap:6px;overflow-x:auto;padding:0 10px 6px;scrollbar-width:none;-webkit-overflow-scrolling:touch}' +
       '.as-chips::-webkit-scrollbar{display:none}' +
-      '.as-chips button{flex:0 0 auto;border:1px solid #e5e7eb;background:#fff;color:#0A2748;border-radius:999px;padding:7px 14px;font:700 14px/1.2 system-ui,-apple-system,sans-serif;cursor:pointer}' +
+      '.as-chips button{flex:0 0 auto;border:1px solid #e5e7eb;background:#fff;color:#0A2748;border-radius:999px;padding:4px 10px;font:700 13px/1.2 system-ui,-apple-system,sans-serif;cursor:pointer}' +
       '.as-chips button i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:1px}' +
       '.as-chips button.on{background:#0A2748;color:#fff;border-color:#0A2748}' +
-      '.as-titlebar{display:flex;align-items:center;gap:8px;padding-right:12px}' +
+      '.as-titlebar{display:flex;align-items:center;gap:6px;padding:0 8px 0 0}' +
       '.as-titlebar #asTitle{flex:1;padding-right:0}' +
-      '.as-tog{flex:0 0 auto;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#0A2748;margin:0}' +
+      '.as-tog{flex:0 0 auto;display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:#0A2748;margin:0}' +
       '.as-tog input{width:18px;height:18px;accent-color:#0A2748;margin:0}' +
       '#asList{overflow:auto;-webkit-overflow-scrolling:touch;flex:1 1 auto;min-height:0;padding-bottom:8px}' +
       '.as-card{display:flex;gap:10px;width:calc(100% - 24px);margin:0 12px 10px;padding:12px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;text-align:left;cursor:pointer;font:inherit;color:inherit}' +
@@ -482,9 +485,10 @@
       var dot = dots[f[0]] ? '<i style="background:' + dots[f[0]] + '"></i>' : '';
       return '<button type="button" data-f="' + f[0] + '"' + (f[0] === 'all' ? ' class="on" aria-pressed="true"' : ' aria-pressed="false"') + '>' + dot + f[1] + '</button>';
     }).join('');
-    sheet.innerHTML = '<button type="button" class="as-grab" id="asGrab" aria-expanded="true" aria-label="Show or hide the alert list"><i></i></button>' +
+    sheet.className = 'is-min';
+    sheet.innerHTML = '<button type="button" class="as-grab" id="asGrab" aria-expanded="false" aria-label="Show or hide the alert list"><i></i></button>' +
       '<div class="as-titlebar"><h2 id="asTitle">Alerts in this area</h2><label class="as-tog"><input type="checkbox" id="asIcons"' + (state.icons ? ' checked' : '') + '> Map icons</label></div>' +
-      '<div class="as-chips" role="tablist">' + chips + '</div><button type="button" class="src-link" data-sources>Sources</button><div id="asList" aria-live="polite"></div>';
+      '<div class="as-bar"><div class="as-chips" role="tablist">' + chips + '</div><button type="button" class="src-link" data-sources>Sources</button></div><div id="asList" aria-live="polite"></div>';
     wrap.appendChild(sheet);
     sheet.querySelector('#asGrab').onclick = function () {
       state.collapsed = !state.collapsed;
