@@ -319,13 +319,31 @@
     if (ev.lat != null && ev.lon != null) return pointIn(ev.lat, ev.lon, box);
     return false;
   }
-  function visibleEvents(named, swaths, nws, filter, box) {
+  /* Forecast notices (watches, warnings, statements) stay for 24 hours after
+     they end, or while they are still in effect. A hail size printed on the
+     notice is not hail on the ground, so it does not extend this window.
+     Knock-area hail (source hail-area) is not a forecast notice. */
+  var FORECAST_WINDOW_MS = 24 * 60 * 60 * 1000;
+  function forecastCurrent(ev, now) {
+    if (!ev || ev.source !== 'nws') return true;
+    if (!(now > 0)) return true;
+    if (ev.status === 'live') return true;
+    var sent = ev.sent != null ? ev.sent : ev.when;
+    var end = ev.end;
+    var stamp = null;
+    if (end != null && end <= now) stamp = sent != null ? Math.max(end, sent) : end;
+    else stamp = sent;
+    if (stamp == null || !isFinite(stamp)) return false;
+    var age = now - stamp;
+    return age >= 0 && age <= FORECAST_WINDOW_MS;
+  }
+  function visibleEvents(named, swaths, nws, filter, box, now) {
     var namedIn = (named || []).filter(function (e) { return matches(e, filter) && eventInView(e, box); });
     var dates = {};
     namedIn.forEach(function (e) { if (e.date) dates[e.date] = 1; });
     var swIn = (swaths || []).filter(function (e) { return matches(e, filter) && !dates[e.date] && eventInView(e, box); });
     var nwsIn = (nws || []).filter(function (e) {
-      return matches(e, filter) && (e.geomState === 'ok' || e.geomState === 'partial') && eventInView(e, box);
+      return matches(e, filter) && forecastCurrent(e, now) && (e.geomState === 'ok' || e.geomState === 'partial') && eventInView(e, box);
     });
     return namedIn.concat(swIn, nwsIn);
   }
@@ -472,7 +490,7 @@
   }
   root.StormAlertLogic = {
     categorize: categorize, groupAlerts: groupAlerts, namedHail: namedHail, knockHail: knockHail, swathEvents: swathEvents,
-    matches: matches, eventInView: eventInView, visibleEvents: visibleEvents, geomHits: geomHits,
+    matches: matches, eventInView: eventInView, visibleEvents: visibleEvents, forecastCurrent: forecastCurrent, geomHits: geomHits,
     contains: contains, anchorOf: anchorOf, bboxOf: bboxOf, distToEvent: distToEvent, distText: distText,
     daysBetween: daysBetween, daysAgoLabel: daysAgoLabel, agoFromMs: agoFromMs, dateLabel: dateLabel,
     describeEvent: describeEvent, placeTitle: placeTitle, feedWaiting: feedWaiting, feedNote: feedNote,

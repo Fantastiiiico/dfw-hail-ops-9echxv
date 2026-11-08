@@ -35,7 +35,7 @@
     '<p>These are NWS local storm reports compiled by the Iowa Environmental Mesonet for the Fort Worth office (FWD). Hail reports from that feed are not repeated in the Wind and tornado list. A report is a spotter or station report near the point, not damage confirmed at the house.</p>' +
     '<p class="note" id="src_note_iem"></p></div>' +
     '<div class="cd"><h2>Map alerts</h2>' +
-    '<p>Distances on the alert sheet are from the map center. Live alerts are National Weather Service watches and warnings. Hail icons are the numbered knock areas from the last year: same place, same storm date, and the largest hail on that card. Older storms are not knock areas.</p></div>' +
+    '<p>Distances on the alert sheet are from the map center. National Weather Service watches, warnings, and statements stay on that sheet for 24 hours after they end, and while they are still in effect. A hail size printed on a statement is not hail on the ground. Hail icons are the numbered knock areas from the last year: same place, same storm date, and the largest hail on that card. Older storms are not knock areas.</p></div>' +
     '<div class="cd"><h2>Lists</h2>' +
     '<p><b>Confirmed hail</b> means at least two separate hail reports nearby.</p>' +
     '<p><b>Possible hail</b> means a radar estimate or a single report. The card may be radar only, with nobody reporting hail on the ground nearby; one hail report nearby; or the closest hail report 3 to 5 miles away. The Maybe hail section is not for knocking yet.</p>' +

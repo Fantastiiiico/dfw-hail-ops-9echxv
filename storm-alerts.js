@@ -99,20 +99,23 @@
     return 'storm';
   }
   function geomPending() {
+    var now = Date.now();
     return state.nws.some(function (e) {
-      return Lgc.matches(e, state.filter) && e.geomState === 'pending';
+      return Lgc.matches(e, state.filter) && Lgc.forecastCurrent(e, now) && e.geomState === 'pending';
     });
   }
   function missingGeom() {
+    var now = Date.now();
     return state.nws.some(function (e) {
-      return Lgc.matches(e, state.filter) && (e.geomState === 'missing' || e.geomState === 'partial');
+      return Lgc.matches(e, state.filter) && Lgc.forecastCurrent(e, now) && (e.geomState === 'missing' || e.geomState === 'partial');
     });
   }
   function placedPool() {
+    var now = Date.now();
     var out = state.named.filter(function (e) { return Lgc.matches(e, state.filter); });
     if (state.feed.swath === 'ok') out = out.concat(state.swaths.filter(function (e) { return Lgc.matches(e, state.filter); }));
     state.nws.forEach(function (e) {
-      if (Lgc.matches(e, state.filter) && (e.geomState === 'ok' || e.geomState === 'partial') && e.geom) out.push(e);
+      if (Lgc.matches(e, state.filter) && Lgc.forecastCurrent(e, now) && (e.geomState === 'ok' || e.geomState === 'partial') && e.geom) out.push(e);
     });
     return out;
   }
@@ -268,7 +271,7 @@
     var box = boxOf(M.getBounds());
     var center = { lat: M.getCenter().lat, lon: M.getCenter().lng };
     var now = Date.now();
-    var rows = Lgc.visibleEvents(state.named, state.feed.swath === 'ok' ? state.swaths : [], state.nws, state.filter, box);
+    var rows = Lgc.visibleEvents(state.named, state.feed.swath === 'ok' ? state.swaths : [], state.nws, state.filter, box, now);
     rows.forEach(function (ev) { ev._meta = metaFor(ev, center, now); });
     var arranged = arrange(rows, center);
     rows = arranged.rows;
