@@ -132,4 +132,17 @@ assert.strictEqual(L.kindColor('hail'), '#1d4ed8');
 assert.strictEqual(L.kindColor('wind'), '#0f766e');
 assert.strictEqual(L.kindColor('tornado'), '#dc2626');
 
-console.log('storm-alerts-logic: ' + 28 + ' checks passed');
+var knockPoly = { type: 'Polygon', coordinates: [[[-96.5, 32.8], [-96.3, 32.8], [-96.3, 33.0], [-96.5, 33.0], [-96.5, 32.8]]] };
+var ranked = L.knockHail([{ n: 13, d: '2026-04-27', lat: 32.89, lon: -96.41, nm: 'Rockwall / Dallas', gm: 2.75, g: knockPoly }], '2026-11-08');
+assert.strictEqual(ranked.length, 1);
+assert.strictEqual(ranked[0].title, 'Hail · #13 Rockwall / Dallas');
+assert.strictEqual(ranked[0].inches, '2.75"');
+assert.strictEqual(ranked[0].lat, 32.89);
+assert.strictEqual(ranked[0].lon, -96.41);
+assert.strictEqual(ranked[0].geom, knockPoly);
+assert.strictEqual(L.distToEvent(ranked[0], { lat: 32.9, lon: -96.4 }).inside, true);
+var expired = L.knockHail([{ d: '2025-03-08', lat: 32.6, lon: -97.1, nm: 'Mansfield / Grand Prairie', gm: 1.75 }], '2026-11-08');
+assert.strictEqual(expired.length, 0);
+assert.strictEqual(L.knockHail([{ d: '2026-09-11', lat: 32.63, lon: -97.12, nm: 'Arlington / Mansfield', gm: 1.75 }], '2026-11-08')[0].title, 'Hail · Arlington / Mansfield');
+
+console.log('storm-alerts-logic: checks passed');

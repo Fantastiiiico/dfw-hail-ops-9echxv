@@ -245,24 +245,39 @@
   function namedHail(list, kind) {
     return (list || []).map(function (a, i) {
       if (!a || a.lat == null || a.lon == null || !a.d) return null;
+      var name = a.nm || 'Reported area';
+      var rank = (a.n != null && a.n !== '') ? String(a.n) : '';
+      var geom = a.g || null;
       return {
         id: kind + ':' + i,
         source: 'hail-area',
         kind: 'hail',
         cats: ['hail'],
         date: a.d,
-        name: a.nm || '',
+        name: name,
+        n: rank,
         inches: inches(typeof a.gm === 'number' ? a.gm : parseFloat(a.gm)),
         lat: +a.lat,
         lon: +a.lon,
         status: 'closed',
         live: false,
-        title: 'Hail · ' + (a.nm || 'Reported area'),
+        title: 'Hail · ' + (rank ? '#' + rank + ' ' : '') + name,
         when: Date.parse(a.d + 'T18:00:00Z'),
-        geom: null,
+        geom: geom,
+        bbox: geom ? bboxOf(geom) : null,
         geomState: 'ok'
       };
     }).filter(Boolean);
+  }
+  /* Hail icons for the canvassing map: the published knock areas still inside
+     the 365-day window. Same points and polygons as the numbered knock list.
+     Older history is not included. */
+  function knockHail(list, today) {
+    return namedHail(list, 'ar').filter(function (e) {
+      if (!today) return true;
+      var age = daysBetween(e.date, today);
+      return age != null && age >= 0 && age <= 365;
+    });
   }
   function swathEvents(sw24) {
     var d = sw24 && sw24.d;
@@ -456,7 +471,7 @@
     return { w: sw.lng, s: sw.lat, e: ne.lng, n: ne.lat };
   }
   root.StormAlertLogic = {
-    categorize: categorize, groupAlerts: groupAlerts, namedHail: namedHail, swathEvents: swathEvents,
+    categorize: categorize, groupAlerts: groupAlerts, namedHail: namedHail, knockHail: knockHail, swathEvents: swathEvents,
     matches: matches, eventInView: eventInView, visibleEvents: visibleEvents, geomHits: geomHits,
     contains: contains, anchorOf: anchorOf, bboxOf: bboxOf, distToEvent: distToEvent, distText: distText,
     daysBetween: daysBetween, daysAgoLabel: daysAgoLabel, agoFromMs: agoFromMs, dateLabel: dateLabel,

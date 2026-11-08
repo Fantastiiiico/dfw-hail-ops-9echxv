@@ -122,17 +122,21 @@
     var size = ev.source === 'swath' ? 22 : 28;
     var ring = ev.status === 'live' ? '#B78A2A' : '#fff';
     var html = '<div class="as-pin-i" style="background:' + typeColor(ev) + ';border-color:' + ring + ';width:' + size + 'px;height:' + size + 'px">' + (ICO[cat] || ICO.wind) + '</div>';
-    return L.divIcon({ className: 'as-pin', html: html, iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
+    /* Same lat/lon as the numbered knock pin. Anchor the hail icon above that pin so both stay readable. */
+    var anchorY = ev.source === 'hail-area' ? size + 18 : size / 2;
+    return L.divIcon({ className: 'as-pin', html: html, iconSize: [size, size], iconAnchor: [size / 2, anchorY] });
   }
   function popupHtml(ev) {
     var pill = ev.status === 'live' ? 'Live' : ev.status === 'closed' ? 'Closed' : 'data unavailable';
-    return '<b>' + esc(ev.title) + '</b> <span class="as-pill ' + (ev.status === 'live' ? 'live' : ev.status === 'closed' ? 'closed' : 'unk') + '">' + esc(pill) + '</span><br>' + esc(Lgc.describeEvent(ev));
+    var link = (ev.source === 'hail-area' && ev.n) ? '<br><a href="#a' + esc(ev.n) + '" onclick="var g=document.getElementById(\'topgrp\');if(g)g.open=true">Knock list #' + esc(ev.n) + '</a>' : '';
+    return '<b>' + esc(ev.title) + '</b> <span class="as-pill ' + (ev.status === 'live' ? 'live' : ev.status === 'closed' ? 'closed' : 'unk') + '">' + esc(pill) + '</span><br>' + esc(Lgc.describeEvent(ev)) + link;
   }
   function drawMarkers() {
     if (!M || !layer) return;
     var box = boxOf(M.getBounds());
     var pins = state.pins || [];
-    var key = [(state.icons ? '1' : '0'), state.filter, box.w.toFixed(2), box.s.toFixed(2), box.e.toFixed(2), box.n.toFixed(2), pins.map(function (e) { return e.id; }).join(','), geomSerial].join('|');
+    var knockOn = !(window.ON && window.ON.ar === false);
+    var key = [(state.icons ? '1' : '0'), knockOn ? '1' : '0', state.filter, box.w.toFixed(2), box.s.toFixed(2), box.e.toFixed(2), box.n.toFixed(2), pins.map(function (e) { return e.id; }).join(','), geomSerial].join('|');
     if (key === drawKey) return;
     drawKey = key;
     layer.clearLayers();
@@ -151,6 +155,7 @@
         }).addTo(layer);
       }
       if (!state.icons) return;
+      if (ev.source === 'hail-area' && window.ON && window.ON.ar === false) return;
       var lat = ev.lat, lon = ev.lon;
       if (lat == null || lon == null || !Lgc.pointIn(lat, lon, box)) return;
       var marker = L.marker([lat, lon], { icon: iconFor(ev), keyboard: true, title: ev.title, zIndexOffset: ev.live ? 500 : 200 });
@@ -178,11 +183,13 @@
       var rest = Lgc.sortEvents(sw.filter(function (e) { return swShow.indexOf(e) < 0; }));
       swShow = swShow.concat(rest.slice(0, 3 - swShow.length));
     }
-    var namedShow = named.slice(0, 20);
+    /* Every in-view knock area gets a hail icon. A nearest-20 cut used to drop
+       knock zones and leave the slots to older storms. */
+    var namedShow = named;
     return {
       rows: nws.concat(namedShow, swShow),
       pins: nws.concat(namedShow),
-      more: (named.length - namedShow.length) + (sw.length - swShow.length)
+      more: sw.length - swShow.length
     };
   }
   function focusEvent(ev) {
@@ -471,7 +478,6 @@
       '.as-pin{background:transparent;border:0}' +
       '.as-pin-i{border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}' +
       '#map .leaflet-bottom{bottom:var(--asheet, 220px)!important}' +
-      '#mapwrap .legend{bottom:calc(var(--asheet, 220px) + 4px)!important}' +
       '#mapwrap #mbar{bottom:calc(var(--asheet, 220px) + 54px)!important}' +
       '#mapwrap #rvbar{bottom:calc(var(--asheet, 220px) + 4px)!important}';
     document.head.appendChild(css);
@@ -518,6 +524,7 @@
   }
 
   var api = {
+    refresh: function () { drawKey = ''; if (booted) render(); },
     onSwath: function (o) {
       if (!o || !o.d) { state.feed.swath = 'err'; state.swaths = []; }
       else { state.feed.swath = 'ok'; state.swaths = Lgc.swathEvents(o); }
@@ -532,7 +539,7 @@
     if (booted) return;
     booted = true;
     M = window.M;
-    state.named = Lgc.namedHail(window.AR, 'ar').concat(Lgc.namedHail(window.HIST, 'hist'));
+    state.named = Lgc.knockHail(window.AR, todayCT());
     if (sw24) api.onSwath(sw24);
     build();
     fitMap();
