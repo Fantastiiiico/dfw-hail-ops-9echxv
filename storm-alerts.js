@@ -99,20 +99,23 @@
     return 'storm';
   }
   function geomPending() {
+    var now = Date.now();
     return state.nws.some(function (e) {
-      return Lgc.matches(e, state.filter) && e.geomState === 'pending';
+      return Lgc.matches(e, state.filter) && Lgc.forecastCurrent(e, now) && e.geomState === 'pending';
     });
   }
   function missingGeom() {
+    var now = Date.now();
     return state.nws.some(function (e) {
-      return Lgc.matches(e, state.filter) && (e.geomState === 'missing' || e.geomState === 'partial');
+      return Lgc.matches(e, state.filter) && Lgc.forecastCurrent(e, now) && (e.geomState === 'missing' || e.geomState === 'partial');
     });
   }
   function placedPool() {
+    var now = Date.now();
     var out = state.named.filter(function (e) { return Lgc.matches(e, state.filter); });
     if (state.feed.swath === 'ok') out = out.concat(state.swaths.filter(function (e) { return Lgc.matches(e, state.filter); }));
     state.nws.forEach(function (e) {
-      if (Lgc.matches(e, state.filter) && (e.geomState === 'ok' || e.geomState === 'partial') && e.geom) out.push(e);
+      if (Lgc.matches(e, state.filter) && Lgc.forecastCurrent(e, now) && (e.geomState === 'ok' || e.geomState === 'partial') && e.geom) out.push(e);
     });
     return out;
   }
@@ -122,17 +125,21 @@
     var size = ev.source === 'swath' ? 22 : 28;
     var ring = ev.status === 'live' ? '#B78A2A' : '#fff';
     var html = '<div class="as-pin-i" style="background:' + typeColor(ev) + ';border-color:' + ring + ';width:' + size + 'px;height:' + size + 'px">' + (ICO[cat] || ICO.wind) + '</div>';
-    return L.divIcon({ className: 'as-pin', html: html, iconSize: [size, size], iconAnchor: [size / 2, size / 2] });
+    /* Same lat/lon as the numbered knock pin. Anchor the hail icon above that pin so both stay readable. */
+    var anchorY = ev.source === 'hail-area' ? size + 18 : size / 2;
+    return L.divIcon({ className: 'as-pin', html: html, iconSize: [size, size], iconAnchor: [size / 2, anchorY] });
   }
   function popupHtml(ev) {
     var pill = ev.status === 'live' ? 'Live' : ev.status === 'closed' ? 'Closed' : 'data unavailable';
-    return '<b>' + esc(ev.title) + '</b> <span class="as-pill ' + (ev.status === 'live' ? 'live' : ev.status === 'closed' ? 'closed' : 'unk') + '">' + esc(pill) + '</span><br>' + esc(Lgc.describeEvent(ev));
+    var link = (ev.source === 'hail-area' && ev.n) ? '<br><a href="#a' + esc(ev.n) + '" onclick="var g=document.getElementById(\'topgrp\');if(g)g.open=true">Knock list #' + esc(ev.n) + '</a>' : '';
+    return '<b>' + esc(ev.title) + '</b> <span class="as-pill ' + (ev.status === 'live' ? 'live' : ev.status === 'closed' ? 'closed' : 'unk') + '">' + esc(pill) + '</span><br>' + esc(Lgc.describeEvent(ev)) + link;
   }
   function drawMarkers() {
     if (!M || !layer) return;
     var box = boxOf(M.getBounds());
     var pins = state.pins || [];
-    var key = [(state.icons ? '1' : '0'), state.filter, box.w.toFixed(2), box.s.toFixed(2), box.e.toFixed(2), box.n.toFixed(2), pins.map(function (e) { return e.id; }).join(','), geomSerial].join('|');
+    var knockOn = !(window.ON && window.ON.ar === false);
+    var key = [(state.icons ? '1' : '0'), knockOn ? '1' : '0', state.filter, box.w.toFixed(2), box.s.toFixed(2), box.e.toFixed(2), box.n.toFixed(2), pins.map(function (e) { return e.id; }).join(','), geomSerial].join('|');
     if (key === drawKey) return;
     drawKey = key;
     layer.clearLayers();
@@ -151,6 +158,7 @@
         }).addTo(layer);
       }
       if (!state.icons) return;
+      if (ev.source === 'hail-area' && window.ON && window.ON.ar === false) return;
       var lat = ev.lat, lon = ev.lon;
       if (lat == null || lon == null || !Lgc.pointIn(lat, lon, box)) return;
       var marker = L.marker([lat, lon], { icon: iconFor(ev), keyboard: true, title: ev.title, zIndexOffset: ev.live ? 500 : 200 });
@@ -178,11 +186,13 @@
       var rest = Lgc.sortEvents(sw.filter(function (e) { return swShow.indexOf(e) < 0; }));
       swShow = swShow.concat(rest.slice(0, 3 - swShow.length));
     }
-    var namedShow = named.slice(0, 20);
+    /* Every in-view knock area gets a hail icon. A nearest-20 cut used to drop
+       knock zones and leave the slots to older storms. */
+    var namedShow = named;
     return {
       rows: nws.concat(namedShow, swShow),
       pins: nws.concat(namedShow),
-      more: (named.length - namedShow.length) + (sw.length - swShow.length)
+      more: sw.length - swShow.length
     };
   }
   function focusEvent(ev) {
@@ -261,7 +271,7 @@
     var box = boxOf(M.getBounds());
     var center = { lat: M.getCenter().lat, lon: M.getCenter().lng };
     var now = Date.now();
-    var rows = Lgc.visibleEvents(state.named, state.feed.swath === 'ok' ? state.swaths : [], state.nws, state.filter, box);
+    var rows = Lgc.visibleEvents(state.named, state.feed.swath === 'ok' ? state.swaths : [], state.nws, state.filter, box, now);
     rows.forEach(function (ev) { ev._meta = metaFor(ev, center, now); });
     var arranged = arrange(rows, center);
     rows = arranged.rows;
@@ -315,17 +325,17 @@
     var sheet = document.getElementById('alertSheet');
     var wrap = document.getElementById('mapwrap');
     if (!sheet || !wrap) return;
-    var nav = document.querySelector('.bnav');
-    var navH = nav ? nav.offsetHeight : 64;
-    wrap.style.setProperty('--asheet', (sheet.offsetHeight + navH + 14) + 'px');
+    wrap.style.setProperty('--asheet', (sheet.offsetHeight + 8) + 'px');
   }
   function fitMap() {
     var wrap = document.getElementById('mapwrap');
     var mapEl = document.getElementById('map');
     if (!wrap || !mapEl) return;
-    var top = wrap.getBoundingClientRect().top + window.scrollY;
-    var h = Math.round(window.innerHeight - top);
-    if (h < 420) h = 420;
+    var nav = document.querySelector('.bnav');
+    var navH = nav ? nav.offsetHeight : 0;
+    var top = wrap.getBoundingClientRect().top;
+    var h = Math.round(window.innerHeight - top - navH);
+    if (h < 320) h = 320;
     mapEl.style.height = h + 'px';
     if (M) M.invalidateSize({ pan: false });
     syncChrome();
@@ -424,9 +434,9 @@
   function build() {
     var css = document.createElement('style');
     css.textContent = '' +
-      '#map{height:calc(100vh - 168px);height:calc(100dvh - 168px);min-height:440px}' +
+      '#map{height:calc(100vh - 168px);height:calc(100dvh - 168px)}' +
       '#mapwrap{position:relative}' +
-      '#alertSheet{position:absolute;left:8px;right:8px;bottom:calc(var(--nav, 64px) + env(safe-area-inset-bottom) + 6px);z-index:820;background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(15,23,42,.16);display:flex;flex-direction:column;height:auto;max-height:42%;max-width:744px;margin:0 auto;overflow:hidden}' +
+      '#alertSheet{position:absolute;left:0;right:0;bottom:0;z-index:820;background:#fff;border-radius:16px 16px 0 0;box-shadow:0 -6px 20px rgba(15,23,42,.16);display:flex;flex-direction:column;height:auto;max-height:46%;width:100%;max-width:none;margin:0;overflow:hidden}' +
       '#alertSheet.is-min{max-height:none}' +
       '#alertSheet.is-min #asList{display:none}' +
       '#alertSheet .as-grab{display:block;width:100%;border:0;background:transparent;padding:5px 0 0;cursor:pointer}' +
@@ -470,10 +480,9 @@
       '.as-extra{font-weight:700;color:#0A2748}' +
       '.as-pin{background:transparent;border:0}' +
       '.as-pin-i{border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}' +
-      '#map .leaflet-bottom{bottom:var(--asheet, 220px)!important}' +
-      '#mapwrap .legend{bottom:calc(var(--asheet, 220px) + 4px)!important}' +
-      '#mapwrap #mbar{bottom:calc(var(--asheet, 220px) + 54px)!important}' +
-      '#mapwrap #rvbar{bottom:calc(var(--asheet, 220px) + 4px)!important}';
+      '#map .leaflet-bottom{bottom:var(--asheet, 96px)!important}' +
+      '#mapwrap #mbar{bottom:calc(var(--asheet, 96px) + 54px)!important}' +
+      '#mapwrap #rvbar{bottom:calc(var(--asheet, 96px) + 4px)!important}';
     document.head.appendChild(css);
     var wrap = document.getElementById('mapwrap');
     if (!wrap) return;
@@ -518,6 +527,7 @@
   }
 
   var api = {
+    refresh: function () { drawKey = ''; if (booted) render(); },
     onSwath: function (o) {
       if (!o || !o.d) { state.feed.swath = 'err'; state.swaths = []; }
       else { state.feed.swath = 'ok'; state.swaths = Lgc.swathEvents(o); }
@@ -532,7 +542,7 @@
     if (booted) return;
     booted = true;
     M = window.M;
-    state.named = Lgc.namedHail(window.AR, 'ar').concat(Lgc.namedHail(window.HIST, 'hist'));
+    state.named = Lgc.knockHail(window.AR, todayCT());
     if (sw24) api.onSwath(sw24);
     build();
     fitMap();

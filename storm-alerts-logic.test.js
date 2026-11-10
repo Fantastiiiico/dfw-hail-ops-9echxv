@@ -132,4 +132,54 @@ assert.strictEqual(L.kindColor('hail'), '#1d4ed8');
 assert.strictEqual(L.kindColor('wind'), '#0f766e');
 assert.strictEqual(L.kindColor('tornado'), '#dc2626');
 
-console.log('storm-alerts-logic: ' + 28 + ' checks passed');
+var knockPoly = { type: 'Polygon', coordinates: [[[-96.5, 32.8], [-96.3, 32.8], [-96.3, 33.0], [-96.5, 33.0], [-96.5, 32.8]]] };
+var ranked = L.knockHail([{ n: 13, d: '2026-04-27', lat: 32.89, lon: -96.41, nm: 'Rockwall / Dallas', gm: 2.75, g: knockPoly }], '2026-11-08');
+assert.strictEqual(ranked.length, 1);
+assert.strictEqual(ranked[0].title, 'Hail · #13 Rockwall / Dallas');
+assert.strictEqual(ranked[0].inches, '2.75"');
+assert.strictEqual(ranked[0].lat, 32.89);
+assert.strictEqual(ranked[0].lon, -96.41);
+assert.strictEqual(ranked[0].geom, knockPoly);
+assert.strictEqual(L.distToEvent(ranked[0], { lat: 32.9, lon: -96.4 }).inside, true);
+var expired = L.knockHail([{ d: '2025-03-08', lat: 32.6, lon: -97.1, nm: 'Mansfield / Grand Prairie', gm: 1.75 }], '2026-11-08');
+assert.strictEqual(expired.length, 0);
+assert.strictEqual(L.knockHail([{ d: '2026-09-11', lat: 32.63, lon: -97.12, nm: 'Arlington / Mansfield', gm: 1.75 }], '2026-11-08')[0].title, 'Hail · Arlington / Mansfield');
+
+/* Forecast notices older than 24 hours leave the alert sheet. A hail size on
+   the statement is not hail on the ground. Knock-area hail stays. */
+var screenNow = Date.parse('2026-11-08T13:08:00Z');
+var oldSent = Date.parse('2026-11-03T05:05:00Z');
+var oldEnd = Date.parse('2026-11-03T05:00:00Z');
+function nwsEv(over) {
+  var ev = {
+    source: 'nws', status: 'closed', live: false, sent: oldSent, end: oldEnd, when: oldSent,
+    geomState: 'ok', geom: square, lat: 32.9, lon: -96.5, cats: ['wind'], hailSize: null
+  };
+  Object.keys(over || {}).forEach(function (k) { ev[k] = over[k]; });
+  return ev;
+}
+var oldTor = nwsEv({ cats: ['tornado'], event: 'Tornado Watch' });
+var oldWind = nwsEv({ cats: ['wind'], event: 'Special Weather Statement', windGust: '50 MPH' });
+var oldHailNote = nwsEv({ cats: ['hail', 'wind'], event: 'Special Weather Statement', hailSize: '0.25', windGust: '50 MPH' });
+var fresh = nwsEv({ sent: screenNow - 3 * 3600000, end: screenNow - 2 * 3600000, when: screenNow - 3 * 3600000, cats: ['wind'] });
+var stillLive = nwsEv({ status: 'live', live: true, sent: screenNow - 2 * 3600000, end: screenNow + 3600000, when: screenNow - 2 * 3600000, cats: ['tornado'] });
+assert.strictEqual(L.forecastCurrent(oldTor, screenNow), false);
+assert.strictEqual(L.forecastCurrent(oldWind, screenNow), false);
+assert.strictEqual(L.forecastCurrent(oldHailNote, screenNow), false);
+assert.strictEqual(L.forecastCurrent(fresh, screenNow), true);
+assert.strictEqual(L.forecastCurrent(stillLive, screenNow), true);
+assert.strictEqual(L.agoFromMs(oldSent, screenNow), '5d');
+var sheet = L.visibleEvents(named, [], [oldTor, oldWind, oldHailNote, fresh, stillLive], 'all', boxIn, screenNow);
+assert.ok(sheet.some(function (e) { return e.source === 'hail-area'; }));
+assert.ok(sheet.indexOf(fresh) >= 0);
+assert.ok(sheet.indexOf(stillLive) >= 0);
+assert.ok(sheet.indexOf(oldTor) < 0 && sheet.indexOf(oldWind) < 0 && sheet.indexOf(oldHailNote) < 0);
+var hailTab = L.visibleEvents(named, [], [oldHailNote], 'hail', boxIn, screenNow);
+assert.strictEqual(hailTab.length, 1);
+assert.strictEqual(hailTab[0].source, 'hail-area');
+var windTab = L.visibleEvents([], [], [oldWind, fresh], 'wind', boxIn, screenNow);
+assert.deepStrictEqual(windTab, [fresh]);
+var torTab = L.visibleEvents([], [], [oldTor, stillLive], 'tornado', boxIn, screenNow);
+assert.deepStrictEqual(torTab, [stillLive]);
+
+console.log('storm-alerts-logic: checks passed');
