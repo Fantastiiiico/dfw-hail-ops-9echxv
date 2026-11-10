@@ -325,17 +325,17 @@
     var sheet = document.getElementById('alertSheet');
     var wrap = document.getElementById('mapwrap');
     if (!sheet || !wrap) return;
-    var nav = document.querySelector('.bnav');
-    var navH = nav ? nav.offsetHeight : 64;
-    wrap.style.setProperty('--asheet', (sheet.offsetHeight + navH + 14) + 'px');
+    wrap.style.setProperty('--asheet', (sheet.offsetHeight + 8) + 'px');
   }
   function fitMap() {
     var wrap = document.getElementById('mapwrap');
     var mapEl = document.getElementById('map');
     if (!wrap || !mapEl) return;
-    var top = wrap.getBoundingClientRect().top + window.scrollY;
-    var h = Math.round(window.innerHeight - top);
-    if (h < 420) h = 420;
+    var nav = document.querySelector('.bnav');
+    var navH = nav ? nav.offsetHeight : 0;
+    var top = wrap.getBoundingClientRect().top;
+    var h = Math.round(window.innerHeight - top - navH);
+    if (h < 320) h = 320;
     mapEl.style.height = h + 'px';
     if (M) M.invalidateSize({ pan: false });
     syncChrome();
@@ -434,9 +434,9 @@
   function build() {
     var css = document.createElement('style');
     css.textContent = '' +
-      '#map{height:calc(100vh - 168px);height:calc(100dvh - 168px);min-height:440px}' +
+      '#map{height:calc(100vh - 168px);height:calc(100dvh - 168px)}' +
       '#mapwrap{position:relative}' +
-      '#alertSheet{position:absolute;left:8px;right:8px;bottom:calc(var(--nav, 64px) + env(safe-area-inset-bottom) + 6px);z-index:820;background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(15,23,42,.16);display:flex;flex-direction:column;height:auto;max-height:42%;max-width:744px;margin:0 auto;overflow:hidden}' +
+      '#alertSheet{position:absolute;left:0;right:0;bottom:0;z-index:820;background:#fff;border-radius:16px 16px 0 0;box-shadow:0 -6px 20px rgba(15,23,42,.16);display:flex;flex-direction:column;height:auto;max-height:46%;width:100%;max-width:none;margin:0;overflow:hidden}' +
       '#alertSheet.is-min{max-height:none}' +
       '#alertSheet.is-min #asList{display:none}' +
       '#alertSheet .as-grab{display:block;width:100%;border:0;background:transparent;padding:5px 0 0;cursor:pointer}' +
@@ -480,9 +480,9 @@
       '.as-extra{font-weight:700;color:#0A2748}' +
       '.as-pin{background:transparent;border:0}' +
       '.as-pin-i{border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)}' +
-      '#map .leaflet-bottom{bottom:var(--asheet, 220px)!important}' +
-      '#mapwrap #mbar{bottom:calc(var(--asheet, 220px) + 54px)!important}' +
-      '#mapwrap #rvbar{bottom:calc(var(--asheet, 220px) + 4px)!important}';
+      '#map .leaflet-bottom{bottom:var(--asheet, 96px)!important}' +
+      '#mapwrap #mbar{bottom:calc(var(--asheet, 96px) + 54px)!important}' +
+      '#mapwrap #rvbar{bottom:calc(var(--asheet, 96px) + 4px)!important}';
     document.head.appendChild(css);
     var wrap = document.getElementById('mapwrap');
     if (!wrap) return;
